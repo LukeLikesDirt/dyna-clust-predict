@@ -124,8 +124,8 @@ for region in "${REGIONS[@]}"; do
         Rscript "$SIM" \
             --input  "$tmp_fasta" \
             --out    "./data/${region}" \
-            --minsim "$MIN_SIM" \
-            --ncpus  "$N_CPUS"
+            --min_sim "$MIN_SIM" \
+            --n_cpus  "$N_CPUS"
 
         if [[ $? -ne 0 ]]; then
             echo "  WARNING: compute_sim.R failed for ${region}/${target}" >&2
