@@ -24,6 +24,7 @@ readonly MIN_SUBGROUPS=10
 readonly MIN_SEQUENCES=30
 readonly MAX_SEQUENCES=20000
 readonly MAX_PROPORTION=0.75
+readonly MAX_KINGDOM_PROPORTION=0.5
 
 # =============================================================================
 # ENVIRONMENT SETUP
@@ -69,7 +70,8 @@ run_subset() {
     --min_subgroups     "$MIN_SUBGROUPS" \
     --min_sequences     "$MIN_SEQUENCES" \
     --max_sequences     "$MAX_SEQUENCES" \
-    --max_proportion    "$MAX_PROPORTION"
+    --max_proportion    "$MAX_PROPORTION" \
+    --max_kingdom_proportion "$MAX_KINGDOM_PROPORTION"
 
   if [[ $? -ne 0 ]]; then
     echo "ERROR: subset.R failed for region '$label'." >&2
@@ -88,6 +90,7 @@ echo "min_subgroups  : $MIN_SUBGROUPS"
 echo "min_sequences  : $MIN_SEQUENCES"
 echo "max_sequences  : $MAX_SEQUENCES"
 echo "max_proportion : $MAX_PROPORTION"
+echo "max_kingdom_proportion : $MAX_KINGDOM_PROPORTION"
 
 # 1. Full ITS
 run_subset \

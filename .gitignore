@@ -5,6 +5,8 @@ data/ITS2/
 
 # Temporary working files
 tmp/
+tests/consolidate_cutoffs/tmp/
+tests/reformat/tmp/
 
 # SLURM log output
 slurm/

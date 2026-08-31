@@ -244,7 +244,7 @@ for region in "${REGIONS[@]}"; do
     for target in "${TARGET_RANKS[@]}"; do
 
         st="${START_THRESH[$target]}"
-        id_file="./data/${region}/${target}_unique_id.txt"
+        id_file="./data/${region}/${target}_pred_id_global.txt"
         tmp_fasta="$TMP_DIR/${target}_unique.fasta"
         tmp_class="$TMP_DIR/${target}_unique.classification"
 

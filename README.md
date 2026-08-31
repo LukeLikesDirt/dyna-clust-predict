@@ -48,6 +48,9 @@ The workflow is conceptually adapted from
   `scripts/06b_predict_cutoffs_region.sh`  Worker script for a single region
                                            (called by `06b_launch_all_regions.sh`)
 
+  `scripts/07_consolidate_cutoffs.sh`  Fill gaps and repair monotonicity in
+                                       each region's nested cutoff table
+
 All scripts must be run from the **project root directory**.
 
 ### R modules
@@ -63,6 +66,10 @@ All scripts must be run from the **project root directory**.
   `R/compute_sim.R`         Pairwise similarity computation using vsearch
 
   `R/predict.R`             Cut-off prediction (parallel or sequential)
+
+  `R/consolidate_cutoffs.R` Fill gaps and repair monotonicity via a
+                            confidence-ranked fallback chain (self ->
+                            ancestor taxa -> eukaryome-wide global)
   
 ## Directory structure
 
@@ -108,6 +115,8 @@ sbatch scripts/05_compute_sim.sh   # Optional
 # Step 06 — choose one:
 sbatch scripts/06a_predict_cutoffs.sh              # All regions in one job
 bash   scripts/06b_launch_all_regions.sh            # One job per region (parallel)
+
+sbatch scripts/07_consolidate_cutoffs.sh           # Fill gaps, repair monotonicity
 ```
 
 > **Note:** Step 05 is optional. Similarity can be computed on-the-fly
@@ -131,6 +140,11 @@ prior to similarity prediction.
     --min_sequences   INT    Minimum sequences per parent taxon after proportion cap (default: 30)
     --max_sequences   INT    Maximum sequences per parent taxon; excess are balanced round-robin downsampled across child taxa (default: 25000)
     --max_proportion  FLOAT  Maximum fraction a child taxon may represent (default: 0.5)
+    --max_kingdom_proportion  FLOAT  Maximum fraction of the STEP 2 global pool that the
+                                     dominant kingdom may represent (default: 0.5). Independent
+                                     of --max_proportion, which caps the target rank's own
+                                     dominant clade -- inert for global pools since no single
+                                     target-rank clade dominates, unlike kingdom composition.
 
 Example:
 
@@ -192,6 +206,52 @@ Rscript R/predict.R \
   --n_cpus 80 \
   --out data/full_ITS \
   --prefix eukaryome_ITS
+```
+
+## Cutoff consolidation
+
+Used in: `consolidate_cutoffs.R` (via `07_consolidate_cutoffs.sh`)
+
+`predict.R`'s nested cutoff table has one row per `(higher_rank, dataset,
+rank)`, but a cell only exists where that dataset's subset passed
+`subset.R`'s filters -- so some parent taxa are missing values at some
+target ranks, and independently-computed ranks can occasionally violate the
+constraint that similarity must increase from phylum to species (each rank
+nests inside the one above it).
+
+`consolidate_cutoffs.R` resolves every `(higher_rank, dataset, target rank)`
+cell that has at least one direct computation somewhere in its lineage by
+comparing all available candidates -- the dataset's own value, each ancestor
+taxon's value at the same target rank (walking the real taxonomic lineage
+derived from the classification file), and the eukaryome-wide global value
+-- and keeping whichever has the highest confidence (F-measure). It then
+clamps each dataset's own resolved row to be non-decreasing from its
+coarsest to its finest target rank.
+
+    --cutoffs_in         FILE   Raw <prefix>.cutoffs.json.txt for one region [required]
+    --classification_in  FILE   Region classification file, for lineage lookup only [required]
+    --output             FILE   Output path for the consolidated table [required]
+
+Requires the region's global (no `--higher_rank`) predictions to have
+already been run via `06a`/`06b`, since the global cutoffs are the
+top-level anchor of the fallback chain.
+
+Output columns extend `predict.R`'s own (`rank`, `higher_rank`, `dataset`,
+`cut-off`, `confidence`, `sequence number`, `group number`, `max
+proportion`) with:
+
+    source                What supplied the winning value: self / <rank>:<name> / global
+    clamped                TRUE if the monotonicity step raised this value
+    original_cutoff        The pre-resolution direct value, if one existed
+    original_confidence    Its confidence, if one existed
+
+Example:
+
+``` bash
+Rscript R/consolidate_cutoffs.R \
+  --cutoffs_in data/full_ITS/eukaryome.cutoffs.json.txt \
+  --classification_in data/full_ITS/eukaryome_ITS.classification \
+  --output data/full_ITS/eukaryome_cutoffs.txt
 ```
 
 ## Citation

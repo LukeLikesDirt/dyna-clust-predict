@@ -3,6 +3,34 @@
 # Source this file at the top of any script that needs taxonomy filtering:
 #   source("R/utils.R")
 
+# ── Rank hierarchy metadata ───────────────────────────────────────────────────
+#
+# Shared by R/subset.R and R/consolidate_cutoffs.R so the taxonomic hierarchy
+# is defined exactly once.
+#
+# rank_hierarchy   Coarsest -> finest.
+# rank_abbr        Filename abbreviation used for <target>_pred_id_<abbr>.txt.
+# parent_ranks_map Target rank -> valid parent ranks, coarsest -> finest is
+#                  reversed here (finest parent first) since nested_prediction_filter()
+#                  and consolidate_cutoffs.R both walk parents fine-to-coarse.
+
+rank_hierarchy <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+
+rank_abbr <- c(
+  kingdom = "kng", phylum = "phy", class = "cls", order = "ord",
+  family  = "fam", genus  = "gen", species = "spe"
+)
+
+parent_ranks_map <- list(
+  species = c("genus", "family", "order", "class", "phylum", "kingdom"),
+  genus   = c("family", "order", "class", "phylum", "kingdom"),
+  family  = c("order", "class", "phylum", "kingdom"),
+  order   = c("class", "phylum", "kingdom"),
+  class   = c("phylum", "kingdom"),
+  phylum  = c("kingdom"),
+  kingdom = character(0)
+)
+
 # ── Taxonomy filtering ────────────────────────────────────────────────────────
 #
 # is_identified(x)
