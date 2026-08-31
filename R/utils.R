@@ -44,6 +44,11 @@ parent_ranks_map <- list(
 #   - starts with "uncultured"
 #   - contains "incertae sedis" (with space, underscore, dot, or dash separator)
 #   - ends with " sp.", "_sp.", ".sp.", or "-sp." (species placeholder)
+#   - starts with "_" (EUKARYOME internal/artifact markers, e.g.
+#     _mitochondrion, _nucleomorph, _plastid, _Archaea, _Bacteria,
+#     _pseudogene, _pseudogene.Fungi -- no legitimate taxon name at any rank
+#     starts with an underscore, so this single rule covers the whole family
+#     of markers; the explicit alternation below is kept for documentation)
 
 is_identified <- function(x) {
   !is.na(x) &
@@ -53,7 +58,8 @@ is_identified <- function(x) {
   !grepl("[ _.-]sp\\.",                               x, ignore.case = TRUE) &
   !grepl("Unispike1|Unispike2|Unispike3",             x, ignore.case = TRUE) &
   !grepl("Archaea|Bacteria",                          x, ignore.case = TRUE) &
-  !grepl("mitochondrion|nucleomorph|plastid",         x, ignore.case = TRUE)
+  !grepl("mitochondrion|nucleomorph|plastid",         x, ignore.case = TRUE) &
+  !grepl("^_",                                        x)
 }
 
 # ── Length filtering ──────────────────────────────────────────────────────────

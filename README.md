@@ -129,6 +129,31 @@ sbatch scripts/07_consolidate_cutoffs.sh           # Fill gaps, repair monotonic
 
 # Key parameters
 
+## Taxonomy reformatting
+
+Used in: `reformat.R` (via `01_reformat_ITS.sh`)
+
+Numbered Tedersoo et al. (2024, MycoKeys 107) placeholder codes (e.g.
+`Densosporales.fam02`, `Glomeraceae.gen05`) are preserved as usable
+taxonomic groups rather than discarded, with `.` converted to `_` so the
+labels survive downstream taxonomy-string parsing.
+
+Genus names that collide across more than one identified kingdom (e.g. a
+plant genus and an unrelated animal genus sharing the same name) are
+disambiguated by appending `(Kingdom)`, matching the convention EUKARYOME's
+own curators already use for some known homonyms (e.g. `Achlya(Metazoa)` vs
+`Achlya(Straminipila)`) — so pipeline-generated and upstream-supplied
+disambiguation are indistinguishable downstream. Disambiguation happens
+before species-name construction, so the species binomial inherits the
+suffix automatically. Every resolved collision is written to a manifest so
+a future EUKARYOME release that adds or drops a homonym shows up as a
+reviewable diff rather than a silent rename.
+
+    --manifest_out  FILE  Output path for the homonym manifest [default: data/homonym_manifest.txt]
+
+Manifest columns: `original_genus`, `kingdom`, `n_sequences`,
+`disambiguated_genus`.
+
 ## Sequence selection
 
 Used in: `subset.R` (via `04_prepare_subsets.sh`)
