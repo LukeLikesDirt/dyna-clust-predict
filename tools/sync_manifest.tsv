@@ -1,0 +1,30 @@
+# sync_manifest.tsv — declares which files in this repo (dyna-clust-predict,
+# the "main" project) should be kept in sync with which sibling repos.
+#
+# Siblings are dataset-specific forks that share the core R pipeline logic
+# but diverge intentionally on dataset-specific scripts, configs, and (for
+# AM) subset.R/check_annotations.R, which encode AM-specific sampling and
+# correction logic. See README.md "Cross-repo harmonisation" for the full
+# rationale and how this manifest is used (tools/check_drift.sh locally,
+# .github/workflows/sync-to-siblings.yml on push to main).
+#
+# Format: tab-separated, 3 columns, no header row below this comment block.
+#   path   -- repo-relative path of a file to sync (not a directory)
+#   am     -- yes/no: does this file sync to dyna-clust-predict-am
+#   ecm    -- yes/no: does this file sync to dyna-clust-predict-ecm
+#
+# Only files listed here are ever touched by the sync tooling. Anything not
+# listed (scripts/*.sh, README.md, environment.yml, data/, config/, etc.) is
+# left entirely alone in every sibling, since those are dataset-specific by
+# design.
+R/utils.R	yes	yes
+R/predict.R	yes	yes
+R/reformat.R	yes	yes
+R/compute_sim.R	yes	yes
+R/dereplicate_lca.R	yes	yes
+R/consolidate_cutoffs.R	yes	yes
+R/subset.R	no	yes
+R/check_annotations.R	no	yes
+tests/consolidate_cutoffs/run_test.R	yes	yes
+tests/reformat/run_test.R	yes	yes
+tests/test_load_classification_quoting.R	yes	yes

@@ -279,6 +279,40 @@ Rscript R/consolidate_cutoffs.R \
   --output data/full_ITS/eukaryome_cutoffs.txt
 ```
 
+## Cross-repo harmonisation
+
+This is one of three sibling repos sharing a common R pipeline core:
+`dyna-clust-predict` (this repo, the general eukaryote database),
+`dyna-clust-predict-am` (AM/Glomeromycota-focused), and
+`dyna-clust-predict-ecm` (ectomycorrhizal). They share `R/utils.R`,
+`predict.R`, `reformat.R`, `compute_sim.R`, and `dereplicate_lca.R`
+verbatim; AM has intentionally diverged on `subset.R` and
+`check_annotations.R` for its own sampling and correction logic.
+
+`tools/sync_manifest.tsv` declares which shared files sync to which
+sibling. On every push to `main` touching a manifest-listed path,
+[.github/workflows/sync-to-siblings.yml](.github/workflows/sync-to-siblings.yml)
+opens a pull request in each applicable sibling with the updated file(s) —
+never a direct push, since a change correct for the general pipeline can
+still be wrong for a dataset-specific subset. Requires a `SIBLING_REPOS_PAT`
+repository secret (a PAT with write access to both sibling repos); nothing
+propagates until that secret exists.
+
+To check for drift locally (e.g. from the HPC, without waiting on CI):
+
+```bash
+tools/check_drift.sh          # both siblings
+tools/check_drift.sh am       # just dyna-clust-predict-am
+```
+
+Sync direction is one-way (main → siblings). A fix that originates in a
+sibling is a manual PR into main, not something the workflow handles.
+
+`dyna-clust-predict-ecm` has an unrelated git root commit (it was created by
+copying files rather than forking), so `git merge`/`pull` from main will
+never work there directly — the sync workflow applies file content
+directly rather than merging, so this is a non-issue in practice.
+
 ## Citation
 
 Vu, D., Nilsson, R. H., & Verkley, G. J. (2022). Dnabarcoder: An open‐source software package for analysing and predicting DNA sequence similarity cutoffs for fungal sequence identification. Molecular Ecology Resources, 22(7), 2793-2809 https://doi.org/10.1111/1755-0998.13651
