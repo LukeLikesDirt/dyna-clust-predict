@@ -23,6 +23,7 @@ R/reformat.R	yes	yes
 R/compute_sim.R	yes	yes
 R/dereplicate_lca.R	yes	yes
 R/consolidate_cutoffs.R	yes	yes
+R/remove_complexes.R	yes	yes
 R/subset.R	no	yes
 R/check_annotations.R	no	yes
 tests/consolidate_cutoffs/run_test.R	yes	yes
