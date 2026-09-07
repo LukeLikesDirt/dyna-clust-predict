@@ -46,11 +46,11 @@ The workflow is conceptually adapted from
   `scripts/06a_predict_cutoffs.sh`     Predict optimal similarity cut-offs
                                        (all regions sequentially in one job)
 
-  `scripts/06b_launch_all_regions.sh`  Submit one SLURM job per region
+  `scripts/06b_launch_parallel.sh`     Submit one SLURM job per region
                                        (full_ITS, ITS1, ITS2) in parallel
 
-  `scripts/06b_predict_cutoffs_region.sh`  Worker script for a single region
-                                           (called by `06b_launch_all_regions.sh`)
+  `scripts/06c_predict_cutoffs_parallel.sh`  Worker script for a single region
+                                             (called by `06b_launch_parallel.sh`)
 
   `scripts/07_consolidate_cutoffs.sh`  Fill gaps and repair monotonicity in
                                        each region's nested cutoff table
@@ -124,7 +124,7 @@ sbatch scripts/05_compute_sim.sh   # Optional
 
 # Step 06 — choose one:
 sbatch scripts/06a_predict_cutoffs.sh              # All regions in one job
-bash   scripts/06b_launch_all_regions.sh            # One job per region (parallel)
+bash   scripts/06b_launch_parallel.sh              # One job per region (parallel)
 
 sbatch scripts/07_consolidate_cutoffs.sh           # Fill gaps, repair monotonicity
 ```
@@ -134,8 +134,9 @@ sbatch scripts/07_consolidate_cutoffs.sh           # Fill gaps, repair monotonic
 > execution.
 >
 > `06a` runs all three regions sequentially in a single SLURM job.
-> `06b` submits three independent jobs (one per region) so they run in
-> parallel — faster overall but uses more nodes.
+> `06b` submits three independent jobs (one per region, each running
+> `06c_predict_cutoffs_parallel.sh`) so they run in parallel — faster
+> overall but uses more nodes.
 
 # Key parameters
 
@@ -251,7 +252,7 @@ Rscript R/subset.R \
 
 ## Similarity prediction
 
-Used in: `predict.R` (via `06a_predict_cutoffs.sh` / `06b_predict_cutoffs_region.sh`)
+Used in: `predict.R` (via `06a_predict_cutoffs.sh` / `06c_predict_cutoffs_parallel.sh`)
 
 These parameters select the rank combination to predict:
 

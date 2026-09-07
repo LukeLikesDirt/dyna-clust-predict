@@ -22,7 +22,7 @@
 #
 #               Writes <region>/eukaryome_<region>_nocomplex.{fasta,
 #               classification} -- 04_prepare_subsets.sh and
-#               06a_predict_cutoffs.sh / 06b_predict_cutoffs_region.sh read
+#               06a_predict_cutoffs.sh / 06c_predict_cutoffs_parallel.sh read
 #               these files, not the pre-complex-removal ones.
 #
 # Note:         This script must be run from the project root directory,

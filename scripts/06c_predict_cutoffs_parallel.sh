@@ -8,18 +8,18 @@
 #SBATCH --nodelist=ltu-hpc-2
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  06b_predict_cutoffs_region.sh
+# Script name:  06c_predict_cutoffs_parallel.sh
 # Description:  Predict similarity cutoffs for a SINGLE ITS region.
 #               Designed to be submitted once per region so full_ITS, ITS1 and
 #               ITS2 run as parallel SLURM jobs (each with 32 cores) instead of
 #               sequentially in one large job.
 #
-# Usage:        sbatch --job-name=predict_full_ITS scripts/06b_predict_cutoffs_region.sh full_ITS
-#               sbatch --job-name=predict_ITS1     scripts/06b_predict_cutoffs_region.sh ITS1
-#               sbatch --job-name=predict_ITS2     scripts/06b_predict_cutoffs_region.sh ITS2
+# Usage:        sbatch --job-name=predict_full_ITS scripts/06c_predict_cutoffs_parallel.sh full_ITS
+#               sbatch --job-name=predict_ITS1     scripts/06c_predict_cutoffs_parallel.sh ITS1
+#               sbatch --job-name=predict_ITS2     scripts/06c_predict_cutoffs_parallel.sh ITS2
 #
 #               Or use the launcher:
-#               bash scripts/06b_launch_all_regions.sh
+#               bash scripts/06b_launch_parallel.sh
 #
 # Note:         This script must be run from the project root directory.
 

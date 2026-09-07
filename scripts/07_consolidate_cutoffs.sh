@@ -13,7 +13,7 @@
 #               in effect -- the SBATCH resources above are generous headroom,
 #               not a requirement.
 #
-#               Requires 06a_predict_cutoffs.sh / 06b_predict_cutoffs_region.sh
+#               Requires 06a_predict_cutoffs.sh / 06c_predict_cutoffs_parallel.sh
 #               to have already produced eukaryome.cutoffs.json.txt for the
 #               region, INCLUDING the global (no --higher_rank) rows -- this
 #               script's fallback chain has no top-level anchor without them.
