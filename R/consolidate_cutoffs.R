@@ -33,7 +33,7 @@
 # Usage:
 #   Rscript R/consolidate_cutoffs.R \
 #     --cutoffs_in        data/full_ITS/eukaryome.cutoffs.json.txt \
-#     --classification_in data/full_ITS/eukaryome_ITS.classification \
+#     --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
 #     --output            data/full_ITS/eukaryome_cutoffs.txt
 #
 # Note: This script must be run from the project root directory.

@@ -35,9 +35,9 @@ REGION_CUTOFFS_IN["ITS1"]="./data/ITS1/${PREFIX}.cutoffs.json.txt"
 REGION_CUTOFFS_IN["ITS2"]="./data/ITS2/${PREFIX}.cutoffs.json.txt"
 
 declare -A REGION_CLASS
-REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS.classification"
-REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1.classification"
-REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2.classification"
+REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
+REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"
+REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.classification"
 
 declare -A REGION_OUT
 REGION_OUT["full_ITS"]="./data/full_ITS/eukaryome_cutoffs.txt"
