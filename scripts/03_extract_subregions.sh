@@ -22,6 +22,8 @@ readonly GLOBAL_CLASS="./data/full_ITS/eukaryome_ITS.classification"
 readonly PREFIX="eukaryome_ITS"
 
 readonly DEREP_LCA="./R/dereplicate_lca.R"
+readonly APPEND_COMPLETENESS="./R/append_completeness.R"
+readonly MIN_SUBREGION_LENGTH=50
 
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
@@ -29,7 +31,7 @@ readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 # DIRECTORY SETUP
 # =============================================================================
 
-mkdir -p ./data/ITS1 ./data/ITS2 .tmp/
+mkdir -p ./data/ITS1 ./data/ITS2 ./tmp/
 
 # =============================================================================
 # ENVIRONMENT SETUP
@@ -57,6 +59,11 @@ fi
 
 if [[ ! -f "$DEREP_LCA" ]]; then
     echo "ERROR: R script not found: $DEREP_LCA" >&2
+    exit 1
+fi
+
+if [[ ! -f "$APPEND_COMPLETENESS" ]]; then
+    echo "ERROR: R script not found: $APPEND_COMPLETENESS" >&2
     exit 1
 fi
 
@@ -193,6 +200,41 @@ fi
 echo ""
 
 # =============================================================================
+# ITS COMPLETENESS
+# =============================================================================
+# its_complete = ID's raw ITS1 AND ITS2 extractions (pre-dereplication) both
+# exist and are >= MIN_SUBREGION_LENGTH bp. Computed from the raw ITSx FASTAs
+# rather than from ITSx's own positions.txt for robustness -- length is read
+# directly rather than parsed from ITSx's text report. Since dereplicate_lca.R
+# groups by exact sequence identity per subregion, every ID collapsed into one
+# representative shares that representative's length, so joining onto the
+# already-dereplicated classification files by ID is safe.
+
+if [[ -f "$ITS1_RAW" && -f "$ITS2_RAW" ]]; then
+    echo "=== APPENDING ITS COMPLETENESS ==="
+    echo "  Minimum subregion length: ${MIN_SUBREGION_LENGTH}bp"
+
+    COMPLETENESS_TARGETS="$GLOBAL_CLASS"
+    [[ -f "$ITS1_CLASS" ]] && COMPLETENESS_TARGETS="${COMPLETENESS_TARGETS},${ITS1_CLASS}"
+    [[ -f "$ITS2_CLASS" ]] && COMPLETENESS_TARGETS="${COMPLETENESS_TARGETS},${ITS2_CLASS}"
+
+    Rscript "$APPEND_COMPLETENESS" \
+        --its1_raw_fasta       "$ITS1_RAW" \
+        --its2_raw_fasta       "$ITS2_RAW" \
+        --min_length           "$MIN_SUBREGION_LENGTH" \
+        --classification_files "$COMPLETENESS_TARGETS"
+
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: append_completeness.R failed." >&2
+        exit 1
+    fi
+else
+    echo "WARNING: skipping completeness annotation -- ITS1 and/or ITS2 raw output missing." >&2
+fi
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 
@@ -208,10 +250,24 @@ echo ""
 # =============================================================================
 # CLEANUP
 # =============================================================================
+# Retain positions.txt as a persisted audit artifact (per-record SSU/ITS1/
+# 5.8S/ITS2/LSU boundary calls) before removing the rest of ITSx's scratch
+# output. Previously this step was a no-op: ITSx writes to ./tmp/ but cleanup
+# removed a stray ./.tmp/ that mkdir created and nothing else ever touched, so
+# every ITSx artifact silently accumulated in ./tmp/ until the next
+# 02_derep_and_clean.sh run wiped it.
 
 echo "=== CLEANUP ==="
-echo "Removing ITSx tmp directory: .tmp/"
-rm -rf .tmp/
+
+ITSX_POSITIONS="./tmp/${PREFIX}.positions.txt"
+if [[ -f "$ITSX_POSITIONS" ]]; then
+    cp "$ITSX_POSITIONS" "./data/full_ITS/${PREFIX}.positions.txt"
+    echo "Persisted ITSx positions file to: ./data/full_ITS/${PREFIX}.positions.txt"
+fi
+
+echo "Removing ITSx scratch output for prefix: $PREFIX"
+rm -f "./tmp/${PREFIX}".*
+rm -f "$ITS1_CLASS_TMP" "$ITS2_CLASS_TMP"
 
 echo ""
 echo "=== PIPELINE COMPLETED SUCCESSFULLY ==="
