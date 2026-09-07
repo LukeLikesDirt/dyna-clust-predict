@@ -92,6 +92,21 @@ option_list <- list(
                            "[default: %default]")),
   make_option("--min_species_per_parent", type = "integer", default = 2L, metavar = "INT",
               help = "Skip parent groups with fewer distinct species than this [default: %default]"),
+  make_option("--require_complete", type = "character", default = "yes", metavar = "yes/no",
+              help = paste("Restrict to rows with its_complete == TRUE (see",
+                           "R/append_completeness.R) before complex detection, and drop",
+                           "incomplete rows from the output entirely -- not just from",
+                           "complex-detection evidence. Truncated/stub records inflate",
+                           "similarity broadly (within-species too, not just cross-",
+                           "species), so this is the gatekeeper for completeness as well",
+                           "as complex removal. No-ops with a warning if the",
+                           "classification file has no its_complete column.",
+                           "[default: %default]")),
+  make_option("--max_seq_no", type = "integer", default = 20000L, metavar = "INT",
+              help = paste("Max sequences per parent group for complex detection;",
+                           "excess is randomly downsampled (mirrors predict.R's own",
+                           "cap) to bound per-group vsearch runtime/memory on the",
+                           "largest genera. [default: %default]")),
   make_option("--iddef", type = "integer", default = 2L, metavar = "0-4",
               help = "vsearch --iddef pairwise identity definition [default: %default]"),
   make_option("--id_col", type = "character", default = "id", metavar = "STR",
@@ -128,6 +143,8 @@ parent_rank          <- opt$parent_rank
 threshold            <- opt$threshold
 max_hub_species      <- opt$max_hub_species
 min_species_per_parent <- opt$min_species_per_parent
+require_complete     <- identical(tolower(opt$require_complete), "yes")
+max_seq_no           <- opt$max_seq_no
 iddef                <- opt$iddef
 id_col               <- opt$id_col
 n_cpus               <- opt$n_cpus
@@ -147,6 +164,18 @@ if (!id_col %in% names(cls))      stop("ID column '", id_col, "' not found.")
 if (!rank %in% names(cls))        stop("Rank column '", rank, "' not found.")
 if (!parent_rank %in% names(cls)) stop("Parent rank column '", parent_rank, "' not found.")
 
+if (require_complete) {
+  if ("its_complete" %in% names(cls)) {
+    n_before <- nrow(cls)
+    cls <- cls[tolower(its_complete) == "true"]
+    cat(sprintf("[remove_complexes] --require_complete yes: restricted to its_complete rows: %d -> %d\n",
+                n_before, nrow(cls)))
+  } else {
+    cat("[remove_complexes] WARNING: --require_complete yes but no its_complete column found",
+        "(classification predates R/append_completeness.R) -- proceeding unfiltered.\n")
+  }
+}
+
 cls_ok <- cls[is_identified(get(rank)) & is_identified(get(parent_rank))]
 cat("[remove_complexes] Rows with identified", rank, "and", parent_rank, ":", nrow(cls_ok), "\n")
 
@@ -157,6 +186,22 @@ n_species_per_parent <- vapply(names(parent_groups), function(p) {
 parent_groups <- parent_groups[n_species_per_parent >= min_species_per_parent]
 cat(sprintf("[remove_complexes] Parent groups with >= %d species: %d\n",
             min_species_per_parent, length(parent_groups)))
+
+n_capped <- 0L
+if (max_seq_no > 0) {
+  parent_groups <- lapply(parent_groups, function(ids) {
+    if (length(ids) > max_seq_no) {
+      n_capped <<- n_capped + 1L
+      sample(ids, max_seq_no)
+    } else {
+      ids
+    }
+  })
+  if (n_capped > 0) {
+    cat(sprintf("[remove_complexes] %d parent group(s) exceeded --max_seq_no %d, downsampled.\n",
+                n_capped, max_seq_no))
+  }
+}
 
 # ── Fixed-header FASTA index (for fast per-group subset extraction) ─────────
 
