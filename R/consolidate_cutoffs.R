@@ -3,7 +3,7 @@
 # nested similarity-cutoff table.
 #
 # Two problems in the raw <prefix>.cutoffs.json.txt produced by predict.R
-# (via 06a_predict_cutoffs.sh / 06c_predict_cutoffs_parallel.sh):
+# (via 07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh):
 #
 #   1. Gaps: a (higher_rank, dataset, rank) cell is missing whenever that
 #      dataset's subset failed subset.R's min_subgroups/min_sequences filters,

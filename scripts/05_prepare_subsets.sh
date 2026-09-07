@@ -6,15 +6,15 @@
 #SBATCH --partition=short
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  04_prepare_subsets.sh
+# Script name:  05_prepare_subsets.sh
 # Description:  Prepare prediction ID files for all three ITS regions (full ITS,
 #               ITS1, ITS2) by running subset.R once per region. Produces one
 #               ID file per unique-sequence rank (STEP 1) and one ID file per
 #               valid (target x parent) rank combination (STEP 2).
 #
 #               Reads each region's *_nocomplex.classification (written by
-#               03b_remove_complexes.sh), not the pre-complex-removal file --
-#               run 03b before this script.
+#               04_remove_complexes.sh), not the pre-complex-removal file --
+#               run 04 before this script.
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================

@@ -6,7 +6,7 @@
 #SBATCH --partition=long
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  06_predict_cutoffs.sh
+# Script name:  07a_predict_cutoffs.sh
 # Description:  Predict similarity cutoffs for all three ITS regions (full_ITS,
 #               ITS1, ITS2) sequentially. Within each region, local predictions
 #               are run for every (target x parent) rank combination followed by
@@ -71,14 +71,14 @@ TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 REGIONS=("full_ITS" "ITS1" "ITS2")
 
 # FASTA path per region (post-completeness-filter, post-complex-removal --
-# written by 03b_remove_complexes.sh)
+# written by 04_remove_complexes.sh)
 declare -A REGION_FASTA
 REGION_FASTA["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.fasta"
 REGION_FASTA["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.fasta"
 REGION_FASTA["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.fasta"
 
 # Classification path per region (post-completeness-filter, post-complex-
-# removal -- written by 03b_remove_complexes.sh)
+# removal -- written by 04_remove_complexes.sh)
 declare -A REGION_CLASS
 REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
 REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"

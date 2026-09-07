@@ -30,29 +30,30 @@ The workflow is conceptually adapted from
   `scripts/01_reformat_ITS.sh`         Download EUKARYOME, reformat headers,
                                        extract taxonomy
 
-  `scripts/02_check_annotations.sh`    Standardise infraspecific annotations
+  `scripts/02_derep_and_clean.sh`      Length-filter, standardise infraspecific
+                                       annotations, and LCA-dereplicate
 
   `scripts/03_extract_subregions.sh`   Extract ITS1 and ITS2 using ITSx;
                                        annotate completeness (`its_complete`)
 
-  `scripts/03b_remove_complexes.sh`    Restrict to complete-span sequences and
+  `scripts/04_remove_complexes.sh`     Restrict to complete-span sequences and
                                        remove species-level complexes
 
-  `scripts/04_prepare_subsets.sh`      Generate balanced prediction subsets
+  `scripts/05_prepare_subsets.sh`      Generate balanced prediction subsets
 
-  `scripts/05_compute_sim.sh`          *(Optional)* Pre-compute similarity
+  `scripts/06_compute_sim.sh`          *(Optional)* Pre-compute similarity
                                        matrices
 
-  `scripts/06a_predict_cutoffs.sh`     Predict optimal similarity cut-offs
+  `scripts/07a_predict_cutoffs.sh`     Predict optimal similarity cut-offs
                                        (all regions sequentially in one job)
 
-  `scripts/06b_launch_parallel.sh`     Submit one SLURM job per region
+  `scripts/07b_launch_parallel.sh`     Submit one SLURM job per region
                                        (full_ITS, ITS1, ITS2) in parallel
 
-  `scripts/06c_predict_cutoffs_parallel.sh`  Worker script for a single region
-                                             (called by `06b_launch_parallel.sh`)
+  `scripts/07c_predict_cutoffs_parallel.sh`  Worker script for a single region
+                                             (called by `07b_launch_parallel.sh`)
 
-  `scripts/07_consolidate_cutoffs.sh`  Fill gaps and repair monotonicity in
+  `scripts/08_consolidate_cutoffs.sh`  Fill gaps and repair monotonicity in
                                        each region's nested cutoff table
 
 All scripts must be run from the **project root directory**.
@@ -116,26 +117,26 @@ From the project root:
 
 ``` bash
 sbatch scripts/01_reformat_ITS.sh
-sbatch scripts/02_check_annotations.sh
+sbatch scripts/02_derep_and_clean.sh
 sbatch scripts/03_extract_subregions.sh
-sbatch scripts/03b_remove_complexes.sh
-sbatch scripts/04_prepare_subsets.sh
-sbatch scripts/05_compute_sim.sh   # Optional
+sbatch scripts/04_remove_complexes.sh
+sbatch scripts/05_prepare_subsets.sh
+sbatch scripts/06_compute_sim.sh   # Optional
 
-# Step 06 — choose one:
-sbatch scripts/06a_predict_cutoffs.sh              # All regions in one job
-bash   scripts/06b_launch_parallel.sh              # One job per region (parallel)
+# Step 07 — choose one:
+sbatch scripts/07a_predict_cutoffs.sh              # All regions in one job
+bash   scripts/07b_launch_parallel.sh              # One job per region (parallel)
 
-sbatch scripts/07_consolidate_cutoffs.sh           # Fill gaps, repair monotonicity
+sbatch scripts/08_consolidate_cutoffs.sh           # Fill gaps, repair monotonicity
 ```
 
-> **Note:** Step 05 is optional. Similarity can be computed on-the-fly
-> in Step 06, which is preferred for large datasets and parallel
+> **Note:** Step 06 is optional. Similarity can be computed on-the-fly
+> in Step 07, which is preferred for large datasets and parallel
 > execution.
 >
-> `06a` runs all three regions sequentially in a single SLURM job.
-> `06b` submits three independent jobs (one per region, each running
-> `06c_predict_cutoffs_parallel.sh`) so they run in parallel — faster
+> `07a` runs all three regions sequentially in a single SLURM job.
+> `07b` submits three independent jobs (one per region, each running
+> `07c_predict_cutoffs_parallel.sh`) so they run in parallel — faster
 > overall but uses more nodes.
 
 # Key parameters
@@ -179,7 +180,7 @@ genuine, non-truncated region.
 
 ## Complex removal
 
-Used in: `remove_complexes.R` (via `03b_remove_complexes.sh`)
+Used in: `remove_complexes.R` (via `04_remove_complexes.sh`)
 
 Detects species that cannot be discriminated by the barcode marker
 (single-linkage clustering at `--threshold` identity, within each
@@ -222,7 +223,7 @@ Rscript R/remove_complexes.R \
 
 ## Sequence selection
 
-Used in: `subset.R` (via `04_prepare_subsets.sh`)
+Used in: `subset.R` (via `05_prepare_subsets.sh`)
 
 These parameters control taxonomic balance and sampling constraints
 prior to similarity prediction.
@@ -252,7 +253,7 @@ Rscript R/subset.R \
 
 ## Similarity prediction
 
-Used in: `predict.R` (via `06a_predict_cutoffs.sh` / `06c_predict_cutoffs_parallel.sh`)
+Used in: `predict.R` (via `07a_predict_cutoffs.sh` / `07c_predict_cutoffs_parallel.sh`)
 
 These parameters select the rank combination to predict:
 
@@ -321,7 +322,7 @@ Rscript R/predict.R \
 
 ## Cutoff consolidation
 
-Used in: `consolidate_cutoffs.R` (via `07_consolidate_cutoffs.sh`)
+Used in: `consolidate_cutoffs.R` (via `08_consolidate_cutoffs.sh`)
 
 `predict.R`'s nested cutoff table has one row per `(higher_rank, dataset,
 rank)`, but a cell only exists where that dataset's subset passed

@@ -6,7 +6,7 @@
 #SBATCH --partition=long
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  05_compute_sim.sh
+# Script name:  06_compute_sim.sh
 # Description:  Optional pre-computation of pairwise vsearch similarity matrices
 #               for global predictions. Runs compute_sim.R for each rank's
 #               unique-sequence FASTA across all three ITS regions (full_ITS,
@@ -44,9 +44,9 @@ mkdir -p "$TMP_DIR"
 region_fasta() {
     local region="$1"
     case "$region" in
-        full_ITS) echo "./data/full_ITS/eukaryome_ITS.fasta"  ;;
-        ITS1)     echo "./data/ITS1/eukaryome_ITS1.fasta"     ;;
-        ITS2)     echo "./data/ITS2/eukaryome_ITS2.fasta"     ;;
+        full_ITS) echo "./data/full_ITS/eukaryome_ITS_nocomplex.fasta"  ;;
+        ITS1)     echo "./data/ITS1/eukaryome_ITS1_nocomplex.fasta"     ;;
+        ITS2)     echo "./data/ITS2/eukaryome_ITS2_nocomplex.fasta"     ;;
         *)
             echo "ERROR: Unknown region: $region" >&2
             return 1

@@ -8,18 +8,18 @@
 #SBATCH --nodelist=ltu-hpc-2
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  06c_predict_cutoffs_parallel.sh
+# Script name:  07c_predict_cutoffs_parallel.sh
 # Description:  Predict similarity cutoffs for a SINGLE ITS region.
 #               Designed to be submitted once per region so full_ITS, ITS1 and
 #               ITS2 run as parallel SLURM jobs (each with 32 cores) instead of
 #               sequentially in one large job.
 #
-# Usage:        sbatch --job-name=predict_full_ITS scripts/06c_predict_cutoffs_parallel.sh full_ITS
-#               sbatch --job-name=predict_ITS1     scripts/06c_predict_cutoffs_parallel.sh ITS1
-#               sbatch --job-name=predict_ITS2     scripts/06c_predict_cutoffs_parallel.sh ITS2
+# Usage:        sbatch --job-name=predict_full_ITS scripts/07c_predict_cutoffs_parallel.sh full_ITS
+#               sbatch --job-name=predict_ITS1     scripts/07c_predict_cutoffs_parallel.sh ITS1
+#               sbatch --job-name=predict_ITS2     scripts/07c_predict_cutoffs_parallel.sh ITS2
 #
 #               Or use the launcher:
-#               bash scripts/06b_launch_parallel.sh
+#               bash scripts/07b_launch_parallel.sh
 #
 # Note:         This script must be run from the project root directory.
 
@@ -90,7 +90,7 @@ RANK_ABBR["genus"]="gen"
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 
 # FASTA and classification paths per region (post-completeness-filter,
-# post-complex-removal -- written by 03b_remove_complexes.sh)
+# post-complex-removal -- written by 04_remove_complexes.sh)
 declare -A REGION_FASTA
 REGION_FASTA["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.fasta"
 REGION_FASTA["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.fasta"

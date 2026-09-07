@@ -6,7 +6,7 @@
 #SBATCH --partition=short
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  03b_remove_complexes.sh
+# Script name:  04_remove_complexes.sh
 # Description:  For each ITS region, restrict to complete-span sequences
 #               (its_complete == TRUE, written by 03_extract_subregions.sh /
 #               R/append_completeness.R) and remove species-level complexes
@@ -21,12 +21,12 @@
 #               species matches used for complex detection).
 #
 #               Writes <region>/eukaryome_<region>_nocomplex.{fasta,
-#               classification} -- 04_prepare_subsets.sh and
-#               06a_predict_cutoffs.sh / 06c_predict_cutoffs_parallel.sh read
+#               classification} -- 05_prepare_subsets.sh and
+#               07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh read
 #               these files, not the pre-complex-removal ones.
 #
 # Note:         This script must be run from the project root directory,
-#               after 03_extract_subregions.sh and before 04_prepare_subsets.sh.
+#               after 03_extract_subregions.sh and before 05_prepare_subsets.sh.
 
 # =============================================================================
 # PARAMETER SETUP

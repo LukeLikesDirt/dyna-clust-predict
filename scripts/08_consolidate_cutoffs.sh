@@ -6,14 +6,14 @@
 #SBATCH --partition=short
 #SBATCH --output=logs/%x.%j.out
 
-# Script name:  07_consolidate_cutoffs.sh
+# Script name:  08_consolidate_cutoffs.sh
 # Description:  Fill gaps and repair monotonicity in each region's nested
 #               cutoff table via R/consolidate_cutoffs.R. Pure table work (no
 #               vsearch, no sequence I/O), so this is fast and single-threaded
 #               in effect -- the SBATCH resources above are generous headroom,
 #               not a requirement.
 #
-#               Requires 06a_predict_cutoffs.sh / 06c_predict_cutoffs_parallel.sh
+#               Requires 07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh
 #               to have already produced eukaryome.cutoffs.json.txt for the
 #               region, INCLUDING the global (no --higher_rank) rows -- this
 #               script's fallback chain has no top-level anchor without them.

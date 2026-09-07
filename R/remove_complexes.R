@@ -46,11 +46,11 @@
 #     --fasta_out             data/full_ITS/eukaryome_ITS_nocomplex.fasta \
 #     --classification_out    data/full_ITS/eukaryome_ITS_nocomplex.classification \
 #     --manifest_out          data/full_ITS/complex_manifest.txt \
-#     --threshold 1.0 --max_hub_species 3 --min_species_per_genus 2 \
+#     --threshold 1.0 --max_hub_species 3 --min_species_per_parent 2 \
 #     --n_cpus 10 --tmp_dir ./tmp/remove_complexes
 #
 # Note: This script must be run from the project root directory, BEFORE
-# 04_prepare_subsets.sh (subsetting should draw from complex-filtered data).
+# 05_prepare_subsets.sh (subsetting should draw from complex-filtered data).
 
 suppressPackageStartupMessages({
   library(optparse)
