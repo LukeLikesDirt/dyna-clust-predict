@@ -32,7 +32,11 @@ The workflow is conceptually adapted from
 
   `scripts/02_check_annotations.sh`    Standardise infraspecific annotations
 
-  `scripts/03_extract_subregions.sh`   Extract ITS1 and ITS2 using ITSx
+  `scripts/03_extract_subregions.sh`   Extract ITS1 and ITS2 using ITSx;
+                                       annotate completeness (`its_complete`)
+
+  `scripts/03b_remove_complexes.sh`    Restrict to complete-span sequences and
+                                       remove species-level complexes
 
   `scripts/04_prepare_subsets.sh`      Generate balanced prediction subsets
 
@@ -60,6 +64,11 @@ All scripts must be run from the **project root directory**.
   `R/reformat.R`            FASTA header parsing and taxonomy extraction
 
   `R/check_annotations.R`   Infraspecific annotation standardisation
+
+  `R/append_completeness.R` Annotates each ID's `its_complete` status from
+                            ITSx's raw (pre-dereplication) ITS1/ITS2 lengths
+
+  `R/remove_complexes.R`    Hub-guarded species-complex detection and removal
 
   `R/subset.R`              Balanced taxon subset generation
 
@@ -109,6 +118,7 @@ From the project root:
 sbatch scripts/01_reformat_ITS.sh
 sbatch scripts/02_check_annotations.sh
 sbatch scripts/03_extract_subregions.sh
+sbatch scripts/03b_remove_complexes.sh
 sbatch scripts/04_prepare_subsets.sh
 sbatch scripts/05_compute_sim.sh   # Optional
 
@@ -153,6 +163,61 @@ reviewable diff rather than a silent rename.
 
 Manifest columns: `original_genus`, `kingdom`, `n_sequences`,
 `disambiguated_genus`.
+
+## Completeness annotation
+
+Used in: `append_completeness.R` (via `03_extract_subregions.sh`)
+
+Flags each ID `its_complete = TRUE` iff its raw (pre-dereplication) ITS1 and
+ITS2 extractions both exist and are each at least `--min_length` bp.
+"Present in both ITS1/ITS2 outputs" alone is not sufficient — it only
+confirms ITSx assigned *some* label, not that the label represents a
+genuine, non-truncated region.
+
+    --min_length  INT  Minimum length (bp) for each subregion [default: 50]
+
+## Complex removal
+
+Used in: `remove_complexes.R` (via `03b_remove_complexes.sh`)
+
+Detects species that cannot be discriminated by the barcode marker
+(single-linkage clustering at `--threshold` identity, within each
+`--parent_rank` taxon) and removes all but the best-sampled species per
+complex. `--require_complete` (default `yes`) restricts to `its_complete`
+rows first and drops incomplete rows from the output entirely — truncated
+records inflate similarity broadly, not just for complex detection.
+
+Not a parity port of dnabarcoder's `-removecomplexes`: that algorithm's
+unguarded single-linkage merge is fragile to database contamination — one
+mislabelled record can transitively chain unrelated, well-separated species
+into a false mega-complex. `--max_hub_species` excludes any sequence whose
+threshold-identity matches span at least that many distinct species from the
+complex graph before clustering, guarding against exactly this.
+
+    --rank                   STR    Rank at which complexes are detected [default: species]
+    --parent_rank             STR    Rank within which complexes are detected [default: genus]
+    --threshold               FLOAT  Identity threshold defining a complex edge [default: 1.0]
+    --max_hub_species         INT    Exclude a sequence from complex detection if its matches
+                                     span >= this many distinct species [default: 3]
+    --min_species_per_parent  INT    Skip parent groups with fewer distinct species [default: 2]
+    --require_complete        yes/no Restrict to its_complete rows; drop the rest [default: yes]
+    --max_seq_no              INT    Max sequences per parent group; excess is randomly
+                                     downsampled [default: 20000]
+    --iddef                   0-4    vsearch pairwise identity definition [default: 2]
+
+Example:
+
+``` bash
+Rscript R/remove_complexes.R \
+  --fasta_in data/full_ITS/eukaryome_ITS.fasta \
+  --classification_in data/full_ITS/eukaryome_ITS.classification \
+  --fasta_out data/full_ITS/eukaryome_ITS_nocomplex.fasta \
+  --classification_out data/full_ITS/eukaryome_ITS_nocomplex.classification \
+  --manifest_out data/full_ITS/complex_manifest.txt \
+  --threshold 1.0 \
+  --max_hub_species 3 \
+  --n_cpus 32
+```
 
 ## Sequence selection
 
@@ -209,6 +274,24 @@ skipped entirely rather than downsampled:
     --min_seq_no      INT    Min sequences required to report a cutoff (default: 30)
     --max_seq_no      INT    Max sequences per dataset; excess is randomly sampled (default: 25000)
     --max_proportion  FLOAT  Skip datasets where the dominant group exceeds this fraction (default: 1.0)
+    --min_multiseq_groups INT  Min groups with >= 2 sequences required to report a cutoff
+                               (default: 0/off; production runs use 10). A group of size 1
+                               scores a free Dice = 1.0 at threshold 1.0, so datasets
+                               dominated by singleton groups have their optimum pinned at
+                               1.0 regardless of biology -- min_group_no alone does not
+                               catch this, since it counts groups of any size.
+
+Threshold-selection controls:
+
+    --tie_tolerance  FLOAT  Widens the tied-optimum-threshold selection from exact F-measure
+                            equality to fmeasures >= best_f - tie_tolerance, still picking
+                            the middle of the tied range (default: 0/off; production runs
+                            use 0.001, matching the resolution the F-measure computation
+                            itself supports).
+    --iddef          0-4    vsearch pairwise identity definition (default: 2, vsearch's own
+                            default). Investigation found --iddef 1 costs 0.05-0.15
+                            F-measure even on completeness-filtered data, so the default is
+                            unchanged in production; exposed for future experimentation.
 
 Execution controls:
 
@@ -220,13 +303,15 @@ Example:
 
 ``` bash
 Rscript R/predict.R \
-  --input data/full_ITS/eukaryome_ITS.fasta \
-  --classification data/full_ITS/eukaryome_ITS.classification \
+  --input data/full_ITS/eukaryome_ITS_nocomplex.fasta \
+  --classification data/full_ITS/eukaryome_ITS_nocomplex.classification \
   --rank species \
   --higher_rank genus \
   --start_threshold 0.9 \
   --end_threshold 1.0 \
   --step 0.001 \
+  --min_multiseq_groups 10 \
+  --tie_tolerance 0.001 \
   --run_parallel yes \
   --n_cpus 80 \
   --out data/full_ITS \
@@ -249,9 +334,13 @@ cell that has at least one direct computation somewhere in its lineage by
 comparing all available candidates -- the dataset's own value, each ancestor
 taxon's value at the same target rank (walking the real taxonomic lineage
 derived from the classification file), and the eukaryome-wide global value
--- and keeping whichever has the highest confidence (F-measure). It then
-clamps each dataset's own resolved row to be non-decreasing from its
-coarsest to its finest target rank.
+-- and keeping whichever has the highest confidence (F-measure), **excluding
+non-self candidates that bring less multi-sequence evidence than self** (see
+`--min_multiseq_groups`: a candidate with few groups of >= 2 sequences can
+still report an artificially high, singleton-driven confidence, so it is not
+allowed to override a self value backed by more real evidence merely on
+confidence). It then clamps each dataset's own resolved row to be
+non-decreasing from its coarsest to its finest target rank.
 
     --cutoffs_in         FILE   Raw <prefix>.cutoffs.json.txt for one region [required]
     --classification_in  FILE   Region classification file, for lineage lookup only [required]
@@ -262,8 +351,8 @@ already been run via `06a`/`06b`, since the global cutoffs are the
 top-level anchor of the fallback chain.
 
 Output columns extend `predict.R`'s own (`rank`, `higher_rank`, `dataset`,
-`cut-off`, `confidence`, `sequence number`, `group number`, `max
-proportion`) with:
+`cut-off`, `confidence`, `sequence number`, `group number`, `multiseq group
+number`, `max proportion`) with:
 
     source                What supplied the winning value: self / <rank>:<name> / global
     clamped                TRUE if the monotonicity step raised this value
@@ -275,7 +364,7 @@ Example:
 ``` bash
 Rscript R/consolidate_cutoffs.R \
   --cutoffs_in data/full_ITS/eukaryome.cutoffs.json.txt \
-  --classification_in data/full_ITS/eukaryome_ITS.classification \
+  --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
   --output data/full_ITS/eukaryome_cutoffs.txt
 ```
 
@@ -285,9 +374,15 @@ This is one of three sibling repos sharing a common R pipeline core:
 `dyna-clust-predict` (this repo, the general eukaryote database),
 `dyna-clust-predict-am` (AM/Glomeromycota-focused), and
 `dyna-clust-predict-ecm` (ectomycorrhizal). They share `R/utils.R`,
-`predict.R`, `reformat.R`, `compute_sim.R`, and `dereplicate_lca.R`
-verbatim; AM has intentionally diverged on `subset.R` and
-`check_annotations.R` for its own sampling and correction logic.
+`predict.R`, `reformat.R`, `compute_sim.R`, `dereplicate_lca.R`,
+`consolidate_cutoffs.R`, and `remove_complexes.R` verbatim; AM has
+intentionally diverged on `subset.R` and `check_annotations.R` for its own
+sampling and correction logic. Note that only files listed in
+`tools/sync_manifest.tsv` sync — `scripts/*.sh` (including the numbered
+pipeline steps and where each new flag/parameter is wired in with its
+production default) never syncs, so a sibling repo's own pipeline scripts
+must be updated by hand to pick up any change made only at the shell-script
+level here.
 
 `tools/sync_manifest.tsv` declares which shared files sync to which
 sibling. On every push to `main` touching a manifest-listed path,

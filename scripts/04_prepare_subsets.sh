@@ -11,6 +11,10 @@
 #               ITS1, ITS2) by running subset.R once per region. Produces one
 #               ID file per unique-sequence rank (STEP 1) and one ID file per
 #               valid (target x parent) rank combination (STEP 2).
+#
+#               Reads each region's *_nocomplex.classification (written by
+#               03b_remove_complexes.sh), not the pre-complex-removal file --
+#               run 03b before this script.
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================
@@ -94,19 +98,19 @@ echo "max_kingdom_proportion : $MAX_KINGDOM_PROPORTION"
 
 # 1. Full ITS
 run_subset \
-    "./data/full_ITS/eukaryome_ITS.classification" \
+    "./data/full_ITS/eukaryome_ITS_nocomplex.classification" \
     "./data/full_ITS" \
     "full_ITS"
 
 # 2. ITS1
 run_subset \
-    "./data/ITS1/eukaryome_ITS1.classification" \
+    "./data/ITS1/eukaryome_ITS1_nocomplex.classification" \
     "./data/ITS1" \
     "ITS1"
 
 # 3. ITS2
 run_subset \
-    "./data/ITS2/eukaryome_ITS2.classification" \
+    "./data/ITS2/eukaryome_ITS2_nocomplex.classification" \
     "./data/ITS2" \
     "ITS2"
 

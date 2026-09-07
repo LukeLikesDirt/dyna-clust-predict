@@ -52,6 +52,13 @@ readonly RUN_PARALLEL="yes"
 # min_group_no alone does not catch this, since it counts groups of any size.
 # Matches min_group_no's own default of 10 (predict.R's own default is 0/off).
 readonly MIN_MULTISEQ_GROUPS=10
+# Widens tied-optimum-threshold selection from exact F-measure equality to
+# fmeasures >= best_f - tie_tolerance, still picking the middle of the tied
+# range. 0.001 matches the resolution the F-measure computation itself
+# supports (a single sequence changing cluster membership moves F by roughly
+# |class_size| * delta / n -- order 0.001 for typical dataset sizes), so a
+# difference smaller than that shouldn't decide the cut-off.
+readonly TIE_TOLERANCE=0.001
 
 # Start thresholds per target rank
 declare -A START_THRESH
@@ -82,16 +89,17 @@ RANK_ABBR["genus"]="gen"
 
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 
-# FASTA and classification paths per region
+# FASTA and classification paths per region (post-completeness-filter,
+# post-complex-removal -- written by 03b_remove_complexes.sh)
 declare -A REGION_FASTA
-REGION_FASTA["full_ITS"]="./data/full_ITS/eukaryome_ITS.fasta"
-REGION_FASTA["ITS1"]="./data/ITS1/eukaryome_ITS1.fasta"
-REGION_FASTA["ITS2"]="./data/ITS2/eukaryome_ITS2.fasta"
+REGION_FASTA["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.fasta"
+REGION_FASTA["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.fasta"
+REGION_FASTA["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.fasta"
 
 declare -A REGION_CLASS
-REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS.classification"
-REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1.classification"
-REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2.classification"
+REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
+REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"
+REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.classification"
 
 # =============================================================================
 # DIRECTORY SETUP
@@ -212,6 +220,7 @@ for target in "${TARGET_RANKS[@]}"; do
             --end_threshold  "$END_THRESH" \
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
+            --tie_tolerance  "$TIE_TOLERANCE" \
             --prefix         "$PREFIX" \
             --id_col         id \
             --run_parallel   "$RUN_PARALLEL" \
@@ -283,6 +292,7 @@ for target in "${TARGET_RANKS[@]}"; do
         --end_threshold  "$END_THRESH" \
         --step           "$STEP" \
         --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
+        --tie_tolerance  "$TIE_TOLERANCE" \
         --prefix         "$PREFIX" \
         --id_col         id \
         --run_parallel   "$RUN_PARALLEL" \
