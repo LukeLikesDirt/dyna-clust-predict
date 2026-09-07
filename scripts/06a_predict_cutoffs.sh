@@ -26,6 +26,12 @@ readonly STEP=0.001
 readonly END_THRESH=1
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 readonly RUN_PARALLEL="yes"
+# Min groups with >= 2 sequences required to report a cutoff. A group of size
+# 1 scores a free Dice = 1.0 at threshold 1.0, so datasets dominated by
+# singleton groups have their optimum pinned at 1.0 regardless of biology --
+# min_group_no alone does not catch this, since it counts groups of any size.
+# Matches min_group_no's own default of 10 (predict.R's own default is 0/off).
+readonly MIN_MULTISEQ_GROUPS=10
 
 # Start thresholds per target rank
 declare -A START_THRESH
@@ -198,6 +204,7 @@ for region in "${REGIONS[@]}"; do
                 --start_threshold "${st}" \
                 --end_threshold  "$END_THRESH" \
                 --step           "$STEP" \
+                --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
                 --prefix         "$PREFIX" \
                 --id_col         id \
                 --run_parallel   "$RUN_PARALLEL" \
@@ -268,6 +275,7 @@ for region in "${REGIONS[@]}"; do
             --start_threshold "${st}" \
             --end_threshold  "$END_THRESH" \
             --step           "$STEP" \
+            --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
             --prefix         "$PREFIX" \
             --id_col         id \
             --run_parallel   "$RUN_PARALLEL" \
