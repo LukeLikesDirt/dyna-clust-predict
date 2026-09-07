@@ -60,6 +60,15 @@ suppressPackageStartupMessages({
   library(future)
 })
 
+# Allow large globals to be exported to workers. fasta_lines holds the whole
+# region's raw FASTA as a character vector (observed 1.08 GiB for full_ITS's
+# ~1.27M complete-span sequences), referenced by write_subset_fasta() which
+# every parallel worker's closure calls -- a too-small cap forces a hard
+# error rather than a silent fallback here, since the whole batch is
+# dispatched via future_map() in one call, not per-dataset like predict.R.
+# Same fix as R/predict.R's own future.globals.maxSize override.
+options(future.globals.maxSize = 8 * 1024^3)
+
 source("R/utils.R")
 
 # ── Arguments ─────────────────────────────────────────────────────────────────

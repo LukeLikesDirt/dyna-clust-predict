@@ -17,6 +17,7 @@ dependencies:
   - r-furrr
   - r-future
   - r-jsonlite
+  - r-igraph
   - bioconductor-biostrings
 
   # Bioinformatics tools

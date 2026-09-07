@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=1-00:00:00
-#SBATCH --partition=short
+#SBATCH --partition=day
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  04_remove_complexes.sh
