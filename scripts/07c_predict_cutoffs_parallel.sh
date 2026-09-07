@@ -3,9 +3,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem-per-cpu=3950
-#SBATCH --time=60-00:00:00
-#SBATCH --partition=long
-#SBATCH --nodelist=ltu-hpc-2
+#SBATCH --time=7-00:00:00
+#SBATCH --partition=week
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  07c_predict_cutoffs_parallel.sh

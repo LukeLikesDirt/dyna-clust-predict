@@ -2,8 +2,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=80
-#SBATCH --time=60-00:00:00
-#SBATCH --partition=long
+#SBATCH --time=7-00:00:00
+#SBATCH --partition=week
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  06_compute_sim.sh
