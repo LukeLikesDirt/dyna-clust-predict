@@ -27,7 +27,7 @@ readonly SUBSET="./R/subset.R"
 readonly MIN_SUBGROUPS=10
 readonly MIN_SEQUENCES=30
 readonly MAX_SEQUENCES=20000
-readonly MAX_PROPORTION=0.75
+readonly MAX_PROPORTION=0.5
 readonly MAX_KINGDOM_PROPORTION=0.5
 
 # =============================================================================

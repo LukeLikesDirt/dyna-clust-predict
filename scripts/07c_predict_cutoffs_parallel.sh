@@ -25,8 +25,23 @@
 # =============================================================================
 # REGION ARGUMENT
 # =============================================================================
+# Captured before anything else runs (in particular before the ENVIRONMENT
+# SETUP block below sources ~/.bashrc), so a bad invocation fails fast with a
+# clear message rather than an obscure downstream error.
 
-region="${1:?ERROR: Region argument required (full_ITS, ITS1, or ITS2)}"
+if [[ -z "${1:-}" ]]; then
+    echo "ERROR: Region argument required." >&2
+    echo "" >&2
+    echo "Usage:" >&2
+    echo "  sbatch --job-name=predict_full_ITS scripts/07c_predict_cutoffs_parallel.sh full_ITS" >&2
+    echo "  sbatch --job-name=predict_ITS1     scripts/07c_predict_cutoffs_parallel.sh ITS1" >&2
+    echo "  sbatch --job-name=predict_ITS2     scripts/07c_predict_cutoffs_parallel.sh ITS2" >&2
+    echo "" >&2
+    echo "Or submit all three at once via the launcher:" >&2
+    echo "  bash scripts/07b_launch_parallel.sh" >&2
+    exit 1
+fi
+region="$1"
 
 case "$region" in
     full_ITS|ITS1|ITS2) ;;
