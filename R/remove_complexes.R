@@ -60,13 +60,19 @@ suppressPackageStartupMessages({
   library(future)
 })
 
-# Allow large globals to be exported to workers. fasta_lines holds the whole
-# region's raw FASTA as a character vector (observed 1.08 GiB for full_ITS's
-# ~1.27M complete-span sequences), referenced by write_subset_fasta() which
-# every parallel worker's closure calls -- a too-small cap forces a hard
-# error rather than a silent fallback here, since the whole batch is
-# dispatched via future_map() in one call, not per-dataset like predict.R.
-# Same fix as R/predict.R's own future.globals.maxSize override.
+# Safety margin for future_map()'s exported globals (cls_ok, parent_groups
+# etc.). write_subset_fasta() deliberately re-reads its FASTA fresh per call
+# rather than closing over a pre-loaded vector (see its own definition
+# below), specifically so the whole region's raw FASTA -- 1.08 GiB for
+# full_ITS's ~1.27M complete-span sequences -- is never a future_map()
+# global at all. An earlier version of this script did pre-load it as a
+# shared global; raising this cap alone was not enough to fix that design --
+# it stopped the "globals too large" error but full_ITS still hit a
+# cgroup OOM kill at the SLURM level, because R's own GC/refcounting
+# activity across many concurrent forked workers undermines clean
+# copy-on-write sharing of one large vector in practice. Same setting as
+# R/predict.R's own future.globals.maxSize override, kept here as a margin
+# for whatever legitimately-sized globals remain, not as the fix itself.
 options(future.globals.maxSize = 8 * 1024^3)
 
 source("R/utils.R")
@@ -147,6 +153,7 @@ if (length(missing) > 0) stop("Missing required options: ", paste0("--", missing
 if (!file.exists(opt$fasta_in))          stop("File not found: ", opt$fasta_in)
 if (!file.exists(opt$classification_in)) stop("File not found: ", opt$classification_in)
 
+fasta_in             <- opt$fasta_in
 rank                 <- opt$rank
 parent_rank          <- opt$parent_rank
 threshold            <- opt$threshold
@@ -212,20 +219,30 @@ if (max_seq_no > 0) {
   }
 }
 
-# ── Fixed-header FASTA index (for fast per-group subset extraction) ─────────
+# ── Write a subset of sequences to a FASTA file ────────────────────────────
+# Reads fasta_file fresh on every call, exactly like R/predict.R's own
+# write_subset_fasta() -- deliberately NOT a pre-loaded shared vector closed
+# over by every parallel worker. A one-time top-level read here would put the
+# whole region's FASTA (1.08 GiB for full_ITS) into future_map()'s exported
+# globals for every worker; under multicore/fork, R's own GC/refcounting
+# activity across many concurrent workers undermines clean copy-on-write
+# sharing of that vector in practice, which is almost certainly why a first
+# fix (raising future.globals.maxSize to admit the export) was not enough on
+# its own and full_ITS still hit an OOM kill. Re-reading per call means each
+# worker's peak memory is bounded by one region-FASTA read, not by how many
+# workers happen to be resident at once -- the same pattern predict.R already
+# runs successfully at up to 80-way parallelism on this same data.
 
-cat("[remove_complexes] Indexing FASTA:", opt$fasta_in, "\n")
-fasta_lines <- readLines(opt$fasta_in)
-h_idx       <- which(startsWith(fasta_lines, ">"))
-h_ids       <- sub("^>([^ ]+).*", "\\1", fasta_lines[h_idx])
-h_end       <- c(h_idx[-1] - 1L, length(fasta_lines))
-id_to_pos   <- setNames(seq_along(h_idx), h_ids)
-
-write_subset_fasta <- function(ids, out_path) {
+write_subset_fasta <- function(fasta_file, ids, out_path) {
+  lines     <- readLines(fasta_file)
+  h_idx     <- which(startsWith(lines, ">"))
+  h_ids     <- sub("^>([^ ]+).*", "\\1", lines[h_idx])
+  h_end     <- c(h_idx[-1] - 1L, length(lines))
+  id_to_pos <- setNames(seq_along(h_idx), h_ids)
   pos <- id_to_pos[ids]
   pos <- pos[!is.na(pos)]
   keep_lines <- unlist(lapply(pos, function(p) h_idx[p]:h_end[p]))
-  writeLines(fasta_lines[keep_lines], out_path)
+  writeLines(lines[keep_lines], out_path)
 }
 
 # ── Per-parent-group complex detection ────────────────────────────────────────
@@ -239,7 +256,7 @@ detect_complexes_one <- function(parent_name, ids, tmp_dir) {
   safe_name <- gsub("[^A-Za-z0-9_]", "_", parent_name)
   fa_file   <- file.path(tmp_dir, paste0(safe_name, ".fasta"))
   sim_file  <- file.path(tmp_dir, paste0(safe_name, ".sim.txt"))
-  write_subset_fasta(ids, fa_file)
+  write_subset_fasta(fasta_in, ids, fa_file)
 
   vsearch_cmd <- sprintf(
     "vsearch --allpairs_global '%s' --acceptall --userout '%s' --userfields query+target+id --iddef %d --threads 1",
@@ -356,7 +373,7 @@ fwrite(cls_out, opt$classification_out, sep = "\t")
 cat("[remove_complexes] Classification written to:", opt$classification_out,
     "(", nrow(cls_out), "rows )\n")
 
-write_subset_fasta(keep_ids, opt$fasta_out)
+write_subset_fasta(fasta_in, keep_ids, opt$fasta_out)
 cat("[remove_complexes] FASTA written to:", opt$fasta_out, "\n")
 
 if (nrow(all_manifest) > 0) setorder(all_manifest, parent, type, species)
