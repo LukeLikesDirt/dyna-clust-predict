@@ -132,6 +132,13 @@ option_list <- list(
                            "equality to fmeasures >= best_f - tie_tolerance, still",
                            "picking the middle of the tied range. Default 0 reproduces",
                            "exact-equality selection exactly. [default: %default]")),
+  make_option("--cutoff_round_to",
+              type = "double", default = 0, metavar = "NUM",
+              help = paste("Round the final reported cut-off to the nearest multiple of",
+                           "this value (e.g. 0.005). Applied only to the reported cut-off",
+                           "-- the underlying fmeasures trace stays on the full sweep grid",
+                           "so cached .predicted files remain valid. Default 0 disables",
+                           "rounding (off; preserves existing behaviour). [default: %default]")),
   make_option("--id_col",
               type = "character", default = "id", metavar = "STR",
               help = "ID column name in the classification file [default: %default]"),
@@ -198,6 +205,7 @@ min_cutoff      <- opt$min_cutoff
 min_multiseq_groups <- opt$min_multiseq_groups
 iddef           <- opt$iddef
 tie_tolerance   <- opt$tie_tolerance
+cutoff_round_to <- opt$cutoff_round_to
 id_col          <- opt$id_col
 n_cpus          <- opt$n_cpus
 tmp_dir         <- opt$tmp_dir
@@ -230,6 +238,16 @@ if (run_parallel) {
 # ── NULL-coalescing operator ──────────────────────────────────────────────────
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+# round_to_step(x, step): round x to the nearest multiple of step. step <= 0
+# (or NA) disables rounding and returns x unchanged -- the default, so
+# --cutoff_round_to 0 reproduces existing behaviour exactly. The final
+# round(..., 4) only cleans up binary floating-point representation noise
+# (e.g. 194 * 0.005 landing a hair off 0.97); it does not add precision.
+round_to_step <- function(x, step) {
+  if (is.na(step) || step <= 0) return(x)
+  round(round(x / step) * step, 4)
+}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Functions
@@ -442,7 +460,8 @@ max_proportion <- function(classes) {
 predict_dataset <- function(dataset_name, seq_ids, classes, sim_dt,
                             start_t, end_t, step_t,
                             existing = list(), redo = FALSE,
-                            tie_tolerance = 0, verbose = TRUE) {
+                            tie_tolerance = 0, cutoff_round_to = 0,
+                            verbose = TRUE) {
   # Restore any previously computed F-measures for this dataset
   saved_fm <- if ("fmeasures"  %in% names(existing)) existing$fmeasures   else list()
 
@@ -588,6 +607,20 @@ predict_dataset <- function(dataset_name, seq_ids, classes, sim_dt,
   mid_pos     <- tied_idx[ceiling(length(tied_idx) / 2)]
   opt_t       <- thresholds[mid_pos]
 
+  # Round the reported cut-off to the nearest --cutoff_round_to and re-sync
+  # best_f to the F-measure actually observed AT that rounded threshold
+  # (not the unrounded optimum's F-measure) -- otherwise "confidence" would
+  # describe a threshold different from the one reported as "cut-off".
+  # cutoff_round_to = 0 (default) skips this and reproduces existing
+  # behaviour exactly. fmeasures/thresholds stay on the full sweep grid
+  # either way, so cached .predicted traces remain valid.
+  if (!is.na(cutoff_round_to) && cutoff_round_to > 0) {
+    rounded_t   <- round_to_step(opt_t, cutoff_round_to)
+    nearest_pos <- which.min(abs(thresholds - rounded_t))
+    opt_t       <- thresholds[nearest_pos]
+    best_f      <- fmeasures[nearest_pos]
+  }
+
   if (verbose) {
     if (length(tied_idx) > 1) {
       cat(sprintf("[predict] %s: F=%.4f tied over %d thresholds (%.4f\u2013%.4f), selecting middle: %.4f\n",
@@ -626,7 +659,7 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
                             sim_dt, fasta_file, output_dir,
                             start_t, end_t, step_t, redo, existing,
                             max_prop_limit, vsearch_threads, tmp_dir,
-                            iddef = 2L, tie_tolerance = 0) {
+                            iddef = 2L, tie_tolerance = 0, cutoff_round_to = 0) {
   classes  <- load_classes(ds_ids, cls_df, rank, id_col)
   n_seqs   <- length(ds_ids)
   n_groups <- length(classes)
@@ -662,7 +695,8 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
   result <- predict_dataset(
     dataset_name, ds_ids, classes, working_sim,
     start_t, end_t, step_t, existing, redo,
-    tie_tolerance = tie_tolerance, verbose = FALSE
+    tie_tolerance = tie_tolerance, cutoff_round_to = cutoff_round_to,
+    verbose = FALSE
   )
 
   list(
@@ -944,7 +978,8 @@ for (rank in rank_list) {
           vsearch_threads = vthreads,
           tmp_dir         = tmp_dir,
           iddef           = iddef,
-          tie_tolerance   = tie_tolerance
+          tie_tolerance   = tie_tolerance,
+          cutoff_round_to = cutoff_round_to
         ),
         error = function(e) {
           list(

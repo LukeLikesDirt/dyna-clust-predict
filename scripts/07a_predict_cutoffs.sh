@@ -39,6 +39,14 @@ readonly MIN_MULTISEQ_GROUPS=10
 # |class_size| * delta / n -- order 0.001 for typical dataset sizes), so a
 # difference smaller than that shouldn't decide the cut-off.
 readonly TIE_TOLERANCE=0.001
+# Rounds the reported cut-off to the nearest multiple of this value (the
+# confidence value is re-synced to the F-measure actually observed at the
+# rounded threshold, not the unrounded optimum -- see R/predict.R). Chosen
+# together with subset.R's MAX_SEQS_PER_GROUP/MAX_SINGLETON_PROPORTION
+# (tests/CBSITS_eval/test_fungi_grid.R): the combination lands kingdom
+# Fungi's species-level cutoff at a conventional, defensible ~0.97 rather
+# than reporting spurious precision like 0.9683.
+readonly CUTOFF_ROUND_TO=0.005
 
 # Start thresholds per target rank
 declare -A START_THRESH
@@ -215,6 +223,7 @@ for region in "${REGIONS[@]}"; do
                 --step           "$STEP" \
                 --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
                 --tie_tolerance  "$TIE_TOLERANCE" \
+                --cutoff_round_to "$CUTOFF_ROUND_TO" \
                 --prefix         "$PREFIX" \
                 --id_col         id \
                 --run_parallel   "$RUN_PARALLEL" \
@@ -287,6 +296,7 @@ for region in "${REGIONS[@]}"; do
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
             --tie_tolerance  "$TIE_TOLERANCE" \
+            --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
             --id_col         id \
             --run_parallel   "$RUN_PARALLEL" \
