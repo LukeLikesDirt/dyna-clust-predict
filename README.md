@@ -237,6 +237,37 @@ prior to similarity prediction.
                                      of --max_proportion, which caps the target rank's own
                                      dominant clade -- inert for global pools since no single
                                      target-rank clade dominates, unlike kingdom composition.
+    --max_seqs_per_group  INT   Max sequences any single species may contribute (default:
+                                 0/off; production runs use 10). Applied only when
+                                 target_rank == species -- a no-op at every coarser rank, where
+                                 groups are naturally few and legitimately need deep sequence
+                                 support. Species over the cap are thinned, never dropped. A
+                                 species with many sequences and real internal diversity can't
+                                 all be pairwise-identical near threshold 1.0, so it fragments
+                                 there, creating useful downward pressure on the optimal
+                                 cutoff -- but only if enough of its sequences survive to
+                                 reveal that diversity, and a small number of species are
+                                 oversampled in EUKARYOME for non-biological reasons (3.3% of
+                                 Fungi species carry 26% of all sequences).
+    --max_singleton_proportion  FLOAT  Max fraction of species (by count, not sequence count)
+                                       that may be singletons (default: 1/off; production runs
+                                       use 0.7). Applied only when target_rank == species, for
+                                       the same reason as --max_seqs_per_group above. A
+                                       singleton scores a free Dice = 1.0 at threshold 1.0, so
+                                       datasets dominated by singleton species have their
+                                       optimum pinned near 1.0 regardless of biology; excess
+                                       singleton species are randomly dropped (never
+                                       multi-sequence ones) to bring the fraction under the cap.
+
+Both caps replace the previous row-level random downsample (Filter 4, and the
+equivalent step in `global_prediction_filter`) with a group-aware downsample
+that keeps a species' sequences together or drops it entirely -- a row-level
+downsample silently fragments large species back down to one surviving
+sequence once the sampling fraction is steep, manufacturing apparent
+singletons that undo both caps above (confirmed on kingdom Fungi: raw pool is
+50.3% singleton by species, but naive row-level downsampling from 118,171 to
+5,000 sequences came out 89.0% singleton, with 76% of those "singleton"
+species actually having >= 2 sequences in the real data).
 
 Example:
 
@@ -248,6 +279,8 @@ Rscript R/subset.R \
   --min_sequences 30 \
   --max_sequences 25000 \
   --max_proportion 0.5 \
+  --max_seqs_per_group 10 \
+  --max_singleton_proportion 0.7 \
   --output_dir output
 ```
 
@@ -294,6 +327,15 @@ Threshold-selection controls:
                             default). Investigation found --iddef 1 costs 0.05-0.15
                             F-measure even on completeness-filtered data, so the default is
                             unchanged in production; exposed for future experimentation.
+    --cutoff_round_to  FLOAT  Round the reported cut-off to the nearest multiple of this
+                              value (default: 0/off; production runs use 0.005). The
+                              confidence value is re-synced to the F-measure actually
+                              observed at the rounded threshold, not the unrounded optimum,
+                              so it always describes the reported cut-off. Combined with
+                              subset.R's --max_seqs_per_group/--max_singleton_proportion,
+                              chosen so kingdom Fungi's species-level cutoff lands at a
+                              conventional, defensible ~0.97 rather than reporting spurious
+                              precision like 0.9683.
 
 Execution controls:
 
@@ -314,6 +356,7 @@ Rscript R/predict.R \
   --step 0.001 \
   --min_multiseq_groups 10 \
   --tie_tolerance 0.001 \
+  --cutoff_round_to 0.005 \
   --run_parallel yes \
   --n_cpus 80 \
   --out data/full_ITS \
