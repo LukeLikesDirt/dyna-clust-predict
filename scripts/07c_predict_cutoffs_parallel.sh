@@ -371,7 +371,7 @@ else
 fi
 echo ""
 echo "Cutoff files written to data/${region}"
-echo "  Local cutoffs  : ${PREFIX}.cutoffs.json"
-echo "  Global cutoffs : ${PREFIX}.cutoffs.json"
+echo "  Local cutoffs  : ${PREFIX}_raw_cutoffs.json"
+echo "  Global cutoffs : ${PREFIX}_raw_cutoffs.json"
 
 conda deactivate

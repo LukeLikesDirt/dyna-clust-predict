@@ -356,7 +356,7 @@ else
 fi
 echo ""
 echo "Cutoff files written to data/full_ITS, data/ITS1, data/ITS2"
-echo "  Local cutoffs  : ${PREFIX}.cutoffs.json (per region)"
-echo "  Global cutoffs : ${PREFIX}.cutoffs.json (appended per region)"
+echo "  Local cutoffs  : ${PREFIX}_raw_cutoffs.json (per region)"
+echo "  Global cutoffs : ${PREFIX}_raw_cutoffs.json (appended per region)"
 
 conda deactivate

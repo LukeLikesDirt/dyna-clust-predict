@@ -2,7 +2,7 @@
 # consolidate_cutoffs.R — Fill gaps and repair monotonicity in a region's
 # nested similarity-cutoff table.
 #
-# Two problems in the raw <prefix>.cutoffs.json.txt produced by predict.R
+# Two problems in the raw <prefix>_raw_cutoffs.txt produced by predict.R
 # (via 07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh):
 #
 #   1. Gaps: a (higher_rank, dataset, rank) cell is missing whenever that
@@ -32,7 +32,7 @@
 #
 # Usage:
 #   Rscript R/consolidate_cutoffs.R \
-#     --cutoffs_in        data/full_ITS/eukaryome.cutoffs.json.txt \
+#     --cutoffs_in        data/full_ITS/eukaryome_raw_cutoffs.txt \
 #     --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
 #     --output            data/full_ITS/eukaryome_cutoffs.txt
 #
@@ -51,7 +51,7 @@ source("R/utils.R")
 option_list <- list(
   make_option("--cutoffs_in",
               type = "character", metavar = "FILE",
-              help = "Raw <prefix>.cutoffs.json.txt for one region [required]"),
+              help = "<prefix>_raw_cutoffs.txt for one region (predict.R's raw output) [required]"),
   make_option("--classification_in",
               type = "character", metavar = "FILE",
               help = "Region classification file, for lineage lookup only [required]"),
@@ -124,8 +124,8 @@ cls <- fread(opt$classification_in, sep = "\t", header = TRUE,
 if (nrow(cutoffs[higher_rank == GLOBAL_HIGHER_RANK]) == 0) {
   warning("No '", GLOBAL_HIGHER_RANK, "' rows found in ", opt$cutoffs_in,
           " -- the fallback chain has no top-level anchor. Run the global ",
-          "prediction step first (06a/06b, after the *_pred_id_global.txt ",
-          "filename fix).", call. = FALSE)
+          "prediction step first (07a_predict_cutoffs.sh / ",
+          "07c_predict_cutoffs_parallel.sh).", call. = FALSE)
 }
 
 # ── Build the taxonomic lineage table ────────────────────────────────────────

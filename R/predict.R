@@ -34,8 +34,11 @@
 #
 # Outputs (in --out directory):
 #   <prefix>.predicted         — full F-measure traces per threshold (JSON)
-#   <prefix>.cutoffs.json      — optimal cutoffs only (JSON)
-#   <prefix>.cutoffs.json.txt  — tab-delimited cutoff summary
+#   <prefix>_raw_cutoffs.json  — optimal cutoffs only (JSON)
+#   <prefix>_raw_cutoffs.txt   — tab-delimited cutoff summary (one dataset's
+#                                direct computation only -- see the note
+#                                above save_results() for how this differs
+#                                from consolidate_cutoffs.R's output)
 #
 # Required external tool: vsearch (https://github.com/torognes/vsearch)
 
@@ -711,10 +714,16 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
 }
 
 # ── Save prediction results ───────────────────────────────────────────────────
-# Writes three files:
-#   output_file  — full JSON with F-measure traces at every threshold
-#   cutoffs_file — filtered JSON with only the best cutoff per dataset
-#   cutoffs_file.txt — tab-delimited plain-text summary for easy parsing
+# Writes three files (e.g. for prefix "eukaryome"):
+#   eukaryome.predicted            — full JSON with F-measure traces at every threshold
+#   eukaryome_raw_cutoffs.json     — filtered JSON with only the best cutoff per dataset
+#   eukaryome_raw_cutoffs.txt      — tab-delimited plain-text summary for easy parsing
+#
+# "raw" because this is one dataset's direct computation only, with gaps
+# wherever subset.R's filters excluded a parent taxon -- the pipeline's
+# actual deliverable is consolidate_cutoffs.R's gap-filled, monotonicity-
+# repaired eukaryome_cutoffs.txt (08_consolidate_cutoffs.sh), a different
+# file, not this one.
 
 save_results <- function(prediction_dict, output_file, cutoffs_file,
                          min_group_no, min_seq_no, max_prop_limit, min_cutoff,
@@ -748,8 +757,10 @@ save_results <- function(prediction_dict, output_file, cutoffs_file,
 
   write(toJSON(final, auto_unbox = TRUE, pretty = TRUE), cutoffs_file)
 
-  # Tab-delimited plain-text summary
-  txt_file <- paste0(cutoffs_file, ".txt")
+  # Tab-delimited plain-text summary (not JSON, despite deriving from the
+  # JSON cutoffs path -- named eukaryome_raw_cutoffs.txt, not
+  # eukaryome_raw_cutoffs.json.txt)
+  txt_file <- sub("\\.json$", ".txt", cutoffs_file)
   header   <- paste(c("rank", "higher_rank", "dataset", "cut-off", "confidence",
                        "sequence number", "group number",
                        "multiseq group number", "max proportion"),
@@ -1122,7 +1133,7 @@ for (rank in rank_list) {
 has_results <- any(sapply(prediction_dict, function(r) length(r) > 0))
 
 if (has_results) {
-  cutoffs_file <- sub("\\.predicted$", ".cutoffs.json", prediction_file)
+  cutoffs_file <- sub("\\.predicted$", "_raw_cutoffs.json", prediction_file)
   save_results(prediction_dict, prediction_file, cutoffs_file,
                min_group_no, min_seq_no, max_prop_limit, min_cutoff,
                min_multiseq_groups)

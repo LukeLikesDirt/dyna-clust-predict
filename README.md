@@ -363,6 +363,17 @@ Rscript R/predict.R \
   --prefix eukaryome_ITS
 ```
 
+Writes three files to `--out` (e.g. for `--prefix eukaryome`):
+
+    eukaryome.predicted            Full F-measure traces per threshold (JSON)
+    eukaryome_raw_cutoffs.json     Best cutoff per dataset, this run only (JSON)
+    eukaryome_raw_cutoffs.txt      Same, tab-delimited
+
+"Raw" because each row is one dataset's direct computation only, with gaps
+wherever `subset.R`'s filters excluded a parent taxon. The pipeline's actual
+deliverable is `consolidate_cutoffs.R`'s gap-filled, monotonicity-repaired
+`eukaryome_cutoffs.txt` (next section) -- a different file, not this one.
+
 ## Cutoff consolidation
 
 Used in: `consolidate_cutoffs.R` (via `08_consolidate_cutoffs.sh`)
@@ -387,12 +398,13 @@ allowed to override a self value backed by more real evidence merely on
 confidence). It then clamps each dataset's own resolved row to be
 non-decreasing from its coarsest to its finest target rank.
 
-    --cutoffs_in         FILE   Raw <prefix>.cutoffs.json.txt for one region [required]
+    --cutoffs_in         FILE   <prefix>_raw_cutoffs.txt for one region -- predict.R's raw,
+                                pre-consolidation output [required]
     --classification_in  FILE   Region classification file, for lineage lookup only [required]
     --output             FILE   Output path for the consolidated table [required]
 
 Requires the region's global (no `--higher_rank`) predictions to have
-already been run via `06a`/`06b`, since the global cutoffs are the
+already been run via `07a`/`07c`, since the global cutoffs are the
 top-level anchor of the fallback chain.
 
 Output columns extend `predict.R`'s own (`rank`, `higher_rank`, `dataset`,
@@ -408,7 +420,7 @@ Example:
 
 ``` bash
 Rscript R/consolidate_cutoffs.R \
-  --cutoffs_in data/full_ITS/eukaryome.cutoffs.json.txt \
+  --cutoffs_in data/full_ITS/eukaryome_raw_cutoffs.txt \
   --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
   --output data/full_ITS/eukaryome_cutoffs.txt
 ```

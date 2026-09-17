@@ -14,7 +14,7 @@
 #               not a requirement.
 #
 #               Requires 07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh
-#               to have already produced eukaryome.cutoffs.json.txt for the
+#               to have already produced eukaryome_raw_cutoffs.txt for the
 #               region, INCLUDING the global (no --higher_rank) rows -- this
 #               script's fallback chain has no top-level anchor without them.
 #
@@ -30,9 +30,9 @@ readonly PREFIX="eukaryome"
 REGION_LABELS=("full_ITS" "ITS1" "ITS2")
 
 declare -A REGION_CUTOFFS_IN
-REGION_CUTOFFS_IN["full_ITS"]="./data/full_ITS/${PREFIX}.cutoffs.json.txt"
-REGION_CUTOFFS_IN["ITS1"]="./data/ITS1/${PREFIX}.cutoffs.json.txt"
-REGION_CUTOFFS_IN["ITS2"]="./data/ITS2/${PREFIX}.cutoffs.json.txt"
+REGION_CUTOFFS_IN["full_ITS"]="./data/full_ITS/${PREFIX}_raw_cutoffs.txt"
+REGION_CUTOFFS_IN["ITS1"]="./data/ITS1/${PREFIX}_raw_cutoffs.txt"
+REGION_CUTOFFS_IN["ITS2"]="./data/ITS2/${PREFIX}_raw_cutoffs.txt"
 
 declare -A REGION_CLASS
 REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
