@@ -174,7 +174,15 @@ get_ancestor_chain <- function(rank, taxon, lineage) {
   current_name <- taxon
   while (current_rank != "kingdom") {
     parent_rank <- rank_hierarchy[match(current_rank, rank_hierarchy) - 1]
-    parent_name <- lineage[[current_rank]][[current_name]]
+    # lineage[[current_rank]] is a named atomic vector (setNames(...) in
+    # build_lineage_table), not a list -- [[ on a missing name throws
+    # "subscript out of bounds" instead of returning NULL the way it would
+    # for a list, so a taxon absent from the lineage table (every row for
+    # it has an unidentified parent rank) crashed here instead of hitting
+    # the is.na() fallback below. [ (single-bracket) returns NA for a
+    # missing name on an atomic vector, which the existing check already
+    # handles correctly.
+    parent_name <- unname(lineage[[current_rank]][current_name])
     if (is.null(parent_name) || is.na(parent_name)) break
     chain[[length(chain) + 1]] <- list(rank = parent_rank, name = parent_name)
     current_rank <- parent_rank
