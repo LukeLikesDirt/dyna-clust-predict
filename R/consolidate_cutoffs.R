@@ -34,7 +34,7 @@
 #   Rscript R/consolidate_cutoffs.R \
 #     --cutoffs_in        data/full_ITS/eukaryome_raw_cutoffs.txt \
 #     --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
-#     --output            data/full_ITS/eukaryome_cutoffs.txt
+#     --output            output/full_ITS/eukaryome_cutoffs.txt
 #
 # Note: This script must be run from the project root directory.
 

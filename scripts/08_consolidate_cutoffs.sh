@@ -40,9 +40,9 @@ REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"
 REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.classification"
 
 declare -A REGION_OUT
-REGION_OUT["full_ITS"]="./data/full_ITS/eukaryome_cutoffs.txt"
-REGION_OUT["ITS1"]="./data/ITS1/eukaryome_cutoffs.txt"
-REGION_OUT["ITS2"]="./data/ITS2/eukaryome_cutoffs.txt"
+REGION_OUT["full_ITS"]="./output/full_ITS/eukaryome_cutoffs.txt"
+REGION_OUT["ITS1"]="./output/ITS1/eukaryome_cutoffs.txt"
+REGION_OUT["ITS2"]="./output/ITS2/eukaryome_cutoffs.txt"
 
 # =============================================================================
 # ENVIRONMENT SETUP
@@ -85,6 +85,8 @@ for region in "${REGION_LABELS[@]}"; do
         echo "WARNING: Classification not found, skipping region '$region': $class_in" >&2
         continue
     fi
+
+    mkdir -p "$(dirname "$out")"
 
     Rscript "$CONSOLIDATE" \
         --cutoffs_in        "$cutoffs_in" \

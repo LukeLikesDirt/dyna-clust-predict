@@ -88,6 +88,11 @@ All scripts must be run from the **project root directory**.
     ├── ITS1/        # ITS1 sequences, taxonomy, ID files, predictions
     └── ITS2/        # ITS2 sequences, taxonomy, ID files, predictions
 
+    output/
+    ├── full_ITS/    # eukaryome_cutoffs.txt -- final consolidated cutoffs
+    ├── ITS1/
+    └── ITS2/
+
 ## Environment setup
 
 A conda environment specification is provided in `environment.yml`.
@@ -422,7 +427,7 @@ Example:
 Rscript R/consolidate_cutoffs.R \
   --cutoffs_in data/full_ITS/eukaryome_raw_cutoffs.txt \
   --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
-  --output data/full_ITS/eukaryome_cutoffs.txt
+  --output output/full_ITS/eukaryome_cutoffs.txt
 ```
 
 ## Cross-repo harmonisation
