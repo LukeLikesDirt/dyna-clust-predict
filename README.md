@@ -392,16 +392,22 @@ nests inside the one above it).
 
 `consolidate_cutoffs.R` resolves every `(higher_rank, dataset, target rank)`
 cell that has at least one direct computation somewhere in its lineage by
-comparing all available candidates -- the dataset's own value, each ancestor
-taxon's value at the same target rank (walking the real taxonomic lineage
-derived from the classification file), and the eukaryome-wide global value
--- and keeping whichever has the highest confidence (F-measure), **excluding
-non-self candidates that bring less multi-sequence evidence than self** (see
-`--min_multiseq_groups`: a candidate with few groups of >= 2 sequences can
-still report an artificially high, singleton-driven confidence, so it is not
-allowed to override a self value backed by more real evidence merely on
-confidence). It then clamps each dataset's own resolved row to be
-non-decreasing from its coarsest to its finest target rank.
+comparing all available candidates -- the dataset's own value and each
+ancestor taxon's value at the same target rank (walking the real taxonomic
+lineage derived from the classification file) -- and keeping whichever has
+the highest confidence (F-measure), **excluding non-self candidates that
+bring less multi-sequence evidence than self** (see `--min_multiseq_groups`:
+a candidate with few groups of >= 2 sequences can still report an
+artificially high, singleton-driven confidence, so it is not allowed to
+override a self value backed by more real evidence merely on confidence).
+The eukaryome-wide **global** value is a true last resort, used only when
+self and every ancestor produced nothing at all -- it never competes on
+confidence, because it pools every kingdom together and isn't a like-for-like
+estimate for any one taxon (a marginally higher confidence there just
+reflects a much larger, unrelated pool, not a better answer). It then clamps
+each dataset's own resolved row to be non-decreasing from its coarsest to its
+finest target rank; a row raised by that clamp has its `confidence` nulled
+out, since nothing was actually measured at the raised threshold.
 
     --cutoffs_in         FILE   <prefix>_raw_cutoffs.txt for one region -- predict.R's raw,
                                 pre-consolidation output [required]
@@ -410,15 +416,17 @@ non-decreasing from its coarsest to its finest target rank.
 
 Requires the region's global (no `--higher_rank`) predictions to have
 already been run via `07a`/`07c`, since the global cutoffs are the
-top-level anchor of the fallback chain.
+gap-filler of last resort.
 
 Output columns extend `predict.R`'s own (`rank`, `higher_rank`, `dataset`,
 `cut-off`, `confidence`, `sequence number`, `group number`, `multiseq group
 number`, `max proportion`) with:
 
     source                What supplied the winning value: self / <rank>:<name> / global
-    clamped                TRUE if the monotonicity step raised this value
-    original_cutoff        The pre-resolution direct value, if one existed
+    clamped                TRUE if the monotonicity step raised this value (confidence is
+                           then NA -- nothing was measured at the raised cutoff)
+    original_cutoff        self's own direct value, if one existed (regardless of whether
+                           self won -- NA if this taxon had no direct computation at all)
     original_confidence    Its confidence, if one existed
 
 Example:
