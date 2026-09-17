@@ -220,6 +220,20 @@ lookup_row <- function(hr, ds, rk) {
 # bring at least as much multi-sequence evidence as self itself; they can
 # still fill a genuine gap (no self_row at all) regardless of their own
 # multiseq_grp_n, since there is nothing to protect in that case.
+#
+# global is a true last resort, considered only when self and every ancestor
+# produced no usable candidate at all -- it can never outrank a self or
+# ancestor value on confidence. "global" pools every kingdom in EUKARYOME
+# together, so it is not a like-for-like competitor: a fungal genus's own
+# cutoff was measured against other fungi, while global's was measured
+# against everything from bacteria-adjacent protists to vertebrates. A
+# marginally higher confidence there reflects that much larger, unrelated
+# pool, not a better estimate for this taxon (confirmed empirically on
+# kingdom Fungi/ITS2: family and genus self values of 0.945/0.965 lost to
+# global's 0.875/0.905 by a hundredth of a point of confidence, which then
+# forced the monotonicity clamp to raise global's own, lower, cross-kingdom
+# cutoff back up past order's Fungi-specific one -- a confusing result for
+# a candidate that should never have been in contention to begin with).
 
 resolve_cell <- function(hr, dataset, target_rank, lineage) {
   candidates <- list()
@@ -245,21 +259,27 @@ resolve_cell <- function(hr, dataset, target_rank, lineage) {
     }
   }
 
-  global_row <- lookup_row(GLOBAL_HIGHER_RANK, GLOBAL_DATASET, target_rank)
-  if (!is.null(global_row)) {
-    candidates[[length(candidates) + 1]] <- list(
-      source = "global", cutoff = global_row$cutoff, confidence = global_row$confidence,
-      seq_n = global_row$seq_n, grp_n = global_row$grp_n,
-      multiseq_grp_n = global_row$multiseq_grp_n, max_prop = global_row$max_prop
-    )
+  candidates <- Filter(function(c) !is.na(c$confidence), candidates)
+
+  if (length(candidates) == 0) {
+    global_row <- lookup_row(GLOBAL_HIGHER_RANK, GLOBAL_DATASET, target_rank)
+    if (!is.null(global_row) && !is.na(global_row$confidence)) {
+      candidates[[1]] <- list(
+        source = "global", cutoff = global_row$cutoff, confidence = global_row$confidence,
+        seq_n = global_row$seq_n, grp_n = global_row$grp_n,
+        multiseq_grp_n = global_row$multiseq_grp_n, max_prop = global_row$max_prop
+      )
+    }
   }
 
-  candidates <- Filter(function(c) !is.na(c$confidence), candidates)
   if (length(candidates) == 0) return(NULL)
 
-  # Guard: if self is among the candidates, drop non-self candidates that
-  # bring less multi-sequence evidence than self before ranking by
-  # confidence -- self can never be excluded by its own guard.
+  # Guard: if self is among the candidates, drop non-self (ancestor)
+  # candidates that bring less multi-sequence evidence than self before
+  # ranking by confidence -- self can never be excluded by its own guard.
+  # global cannot reach this point alongside self (it is only added above
+  # when there is no self and no ancestor), so this guard now only ever
+  # adjudicates self vs. ancestors.
   has_self <- any(vapply(candidates, function(c) c$source == "self", logical(1)))
   if (has_self) {
     self_multiseq <- candidates[[which(vapply(candidates, function(c) c$source == "self", logical(1)))]]$multiseq_grp_n
@@ -270,8 +290,8 @@ resolve_cell <- function(hr, dataset, target_rank, lineage) {
   }
 
   # which.max returns the FIRST maximum, and candidates are ordered
-  # self -> nearest ancestor -> ... -> global, so ties break toward
-  # specificity for free.
+  # self -> nearest ancestor -> ... -> furthest ancestor, so ties break
+  # toward specificity for free (global, when present, is always alone).
   best <- candidates[[which.max(vapply(candidates, `[[`, numeric(1), "confidence"))]]
 
   list(
@@ -357,6 +377,13 @@ consolidated[, clamped_cutoff := clamp_group(cutoff), by = .(higher_rank, datase
 consolidated[, clamped := !is.na(cutoff) & !is.na(clamped_cutoff) & clamped_cutoff != cutoff]
 consolidated[clamped == TRUE, cutoff := clamped_cutoff]
 consolidated[, clamped_cutoff := NULL]
+
+# confidence describes the F-measure actually observed at the WINNING
+# candidate's own cutoff, which the line above may have just moved. Nothing
+# was ever evaluated at the new (raised) threshold, so the old confidence
+# would silently misrepresent it -- null it out rather than report a number
+# that looks measured but isn't.
+consolidated[clamped == TRUE, confidence := NA_real_]
 
 n_clamped <- sum(consolidated$clamped)
 cat(sprintf("[consolidate] %d cell(s) raised by the monotonicity clamp.\n", n_clamped))

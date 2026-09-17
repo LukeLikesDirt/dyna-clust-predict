@@ -13,11 +13,15 @@
 #   KingdomB  gap at family; kingdom has no ancestor, so the gap can only be
 #             filled from global
 #   KingdomC  large monotonicity violation (order=0.90 > family=0.60);
-#             confirms the clamp cascades (family AND genus both get raised)
+#             confirms the clamp cascades (family AND genus both get raised),
+#             and that a clamped row's confidence is nulled out (nothing was
+#             ever measured at the raised cutoff, so the old confidence
+#             would misrepresent it)
 #   KingdomD  small/noise violations (0.001-0.002 drops); confirms the clamp
 #             is unconditional -- no tolerance exemption for small drops
-#   KingdomE  species has a direct value but very low confidence; global
-#             (lower cutoff, higher confidence) should win instead
+#   KingdomE  species has a direct value with very low confidence, and global
+#             would have higher confidence -- but global is a last resort
+#             only (never a competitor when self exists), so self still wins
 #   OrderF/   ancestor-chain test: FamilyF's genus target is a gap with NO
 #   FamilyF   direct kingdom/phylum/class rows above it either -- only its
 #             immediate parent OrderF and global are candidates, and OrderF
@@ -260,10 +264,13 @@ check("KingdomC.order unclamped", "kingdom", "KingdomC", "order", "cutoff", 0.90
 check("KingdomC.family clamped up to order's 0.90", "kingdom", "KingdomC", "family", "cutoff", 0.90)
 check("KingdomC.family clamped flag is TRUE", "kingdom", "KingdomC", "family", "clamped", "TRUE")
 check("KingdomC.family original_cutoff preserved", "kingdom", "KingdomC", "family", "original_cutoff", 0.60)
+check("KingdomC.family confidence nulled (nothing measured at 0.90)", "kingdom", "KingdomC", "family", "confidence", NA_real_)
 check("KingdomC.genus ALSO clamped up to 0.90 (cascade)", "kingdom", "KingdomC", "genus", "cutoff", 0.90)
 check("KingdomC.genus clamped flag is TRUE", "kingdom", "KingdomC", "genus", "clamped", "TRUE")
 check("KingdomC.genus original_cutoff preserved", "kingdom", "KingdomC", "genus", "original_cutoff", 0.85)
+check("KingdomC.genus confidence nulled (nothing measured at 0.90)", "kingdom", "KingdomC", "genus", "confidence", NA_real_)
 check("KingdomC.species unclamped", "kingdom", "KingdomC", "species", "cutoff", 0.95)
+check("KingdomC.species confidence untouched (never clamped)", "kingdom", "KingdomC", "species", "confidence", 0.90)
 
 cat("\n══════════════════════════════════════════════════════════════\n")
 cat("KingdomD -- small/noise violations still get clamped (no tolerance)\n")
@@ -278,14 +285,14 @@ check("KingdomD.genus unclamped", "kingdom", "KingdomD", "genus", "cutoff", 0.90
 check("KingdomD.species unclamped", "kingdom", "KingdomD", "species", "cutoff", 0.950)
 
 cat("\n══════════════════════════════════════════════════════════════\n")
-cat("KingdomE -- low-confidence direct value loses to higher-confidence global\n")
+cat("KingdomE -- global never outranks self, even on confidence\n")
 cat("══════════════════════════════════════════════════════════════\n")
 check("KingdomE.genus unaffected (self wins, high confidence)", "kingdom", "KingdomE", "genus", "cutoff", 0.80)
-check("KingdomE.species overridden by global", "kingdom", "KingdomE", "species", "cutoff", 0.95)
-check("KingdomE.species source is global", "kingdom", "KingdomE", "species", "source", "global")
+check("KingdomE.species self wins despite low confidence", "kingdom", "KingdomE", "species", "cutoff", 0.999)
+check("KingdomE.species source is self, not global", "kingdom", "KingdomE", "species", "source", "self")
 check("KingdomE.species original_cutoff preserved", "kingdom", "KingdomE", "species", "original_cutoff", 0.999)
 check("KingdomE.species original_confidence preserved", "kingdom", "KingdomE", "species", "original_confidence", 0.10)
-check("KingdomE.species not clamped (0.95 already >= 0.80)", "kingdom", "KingdomE", "species", "clamped", "FALSE")
+check("KingdomE.species not clamped (0.999 already >= 0.80)", "kingdom", "KingdomE", "species", "clamped", "FALSE")
 
 cat("\n══════════════════════════════════════════════════════════════\n")
 cat("FamilyF -- ancestor-chain fallback: OrderF beats global on confidence\n")
