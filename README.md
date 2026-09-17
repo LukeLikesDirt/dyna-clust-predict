@@ -325,9 +325,10 @@ Threshold-selection controls:
 
     --tie_tolerance  FLOAT  Widens the tied-optimum-threshold selection from exact F-measure
                             equality to fmeasures >= best_f - tie_tolerance, still picking
-                            the middle of the tied range (default: 0/off; production runs
-                            use 0.001, matching the resolution the F-measure computation
-                            itself supports).
+                            the middle of the tied range (default: 0/off). Not used in
+                            production -- exact-equality tie-breaking plus
+                            --cutoff_round_to's coarser reporting grid was judged simpler,
+                            without a meaningful accuracy tradeoff.
     --iddef          0-4    vsearch pairwise identity definition (default: 2, vsearch's own
                             default). Investigation found --iddef 1 costs 0.05-0.15
                             F-measure even on completeness-filtered data, so the default is
@@ -360,7 +361,6 @@ Rscript R/predict.R \
   --end_threshold 1.0 \
   --step 0.001 \
   --min_multiseq_groups 10 \
-  --tie_tolerance 0.001 \
   --cutoff_round_to 0.005 \
   --run_parallel yes \
   --n_cpus 80 \

@@ -32,13 +32,6 @@ readonly RUN_PARALLEL="yes"
 # min_group_no alone does not catch this, since it counts groups of any size.
 # Matches min_group_no's own default of 10 (predict.R's own default is 0/off).
 readonly MIN_MULTISEQ_GROUPS=10
-# Widens tied-optimum-threshold selection from exact F-measure equality to
-# fmeasures >= best_f - tie_tolerance, still picking the middle of the tied
-# range. 0.001 matches the resolution the F-measure computation itself
-# supports (a single sequence changing cluster membership moves F by roughly
-# |class_size| * delta / n -- order 0.001 for typical dataset sizes), so a
-# difference smaller than that shouldn't decide the cut-off.
-readonly TIE_TOLERANCE=0.001
 # Rounds the reported cut-off to the nearest multiple of this value (the
 # confidence value is re-synced to the F-measure actually observed at the
 # rounded threshold, not the unrounded optimum -- see R/predict.R). Chosen
@@ -222,7 +215,6 @@ for region in "${REGIONS[@]}"; do
                 --end_threshold  "$END_THRESH" \
                 --step           "$STEP" \
                 --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
-                --tie_tolerance  "$TIE_TOLERANCE" \
                 --cutoff_round_to "$CUTOFF_ROUND_TO" \
                 --prefix         "$PREFIX" \
                 --id_col         id \
@@ -295,7 +287,6 @@ for region in "${REGIONS[@]}"; do
             --end_threshold  "$END_THRESH" \
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
-            --tie_tolerance  "$TIE_TOLERANCE" \
             --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
             --id_col         id \
