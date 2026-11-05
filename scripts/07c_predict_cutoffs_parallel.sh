@@ -74,6 +74,14 @@ readonly MIN_MULTISEQ_GROUPS=10
 # Fungi's species-level cutoff at a conventional, defensible ~0.97 rather
 # than reporting spurious precision like 0.9683.
 readonly CUTOFF_ROUND_TO=0.005
+# A pair counts only if vsearch's qcov and tcov are both at least this percentage.
+# --iddef 2 excludes terminal gaps, so unrelated sequences can score 100% from a
+# few overlapping bases, which chains broad datasets together under single
+# linkage. Species within kingdom Fungi: 0.99/F 0.44 ungated, 0.97/F 0.77 at 80.
+readonly MIN_COV=80
+# Recompute F-measures instead of reusing those cached in <prefix>.predicted,
+# which otherwise stay frozen when the input sequences or MIN_COV change.
+readonly REDO="yes"
 
 # Start thresholds per target rank
 declare -A START_THRESH
@@ -235,6 +243,8 @@ for target in "${TARGET_RANKS[@]}"; do
             --end_threshold  "$END_THRESH" \
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
+            --min_cov        "$MIN_COV" \
+            --redo           "$REDO" \
             --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
             --id_col         id \
@@ -307,6 +317,8 @@ for target in "${TARGET_RANKS[@]}"; do
         --end_threshold  "$END_THRESH" \
         --step           "$STEP" \
         --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
+        --min_cov        "$MIN_COV" \
+        --redo           "$REDO" \
         --cutoff_round_to "$CUTOFF_ROUND_TO" \
         --prefix         "$PREFIX" \
         --id_col         id \

@@ -333,6 +333,12 @@ Threshold-selection controls:
                             default). Investigation found --iddef 1 costs 0.05-0.15
                             F-measure even on completeness-filtered data, so the default is
                             unchanged in production; exposed for future experimentation.
+    --min_cov        0-100  Ignore pairs whose vsearch qcov or tcov is below this percentage
+                            (default: 0/off; production runs use 80). --iddef 2 excludes
+                            terminal gaps, so unrelated sequences can score 100% from a few
+                            overlapping bases, and single linkage then chains broad datasets
+                            into giant components. Applies only to similarities computed by
+                            the run, not to a loaded .sim file (use compute_sim.R --min_cov).
     --cutoff_round_to  FLOAT  Round the reported cut-off to the nearest multiple of this
                               value (default: 0/off; production runs use 0.005). The
                               confidence value is re-synced to the F-measure actually
@@ -348,6 +354,22 @@ Execution controls:
     --run_parallel   yes/no   Parallel dataset processing via furrr/future (default: yes)
     --n_cpus         INT      Workers (parallel) or vsearch threads (sequential) (default: all−1)
     --tmp_dir        DIR      Directory for temporary vsearch output (default: ./tmp)
+    --redo           yes/no   Recompute F-measures instead of reusing those cached in
+                              <prefix>.predicted, and ignore a <prefix>.sim left at the default
+                              path by an earlier run (default: no; production runs use yes).
+
+> **Re-running:** without `--redo yes`, F-measures already in `<prefix>.predicted`
+> are reused even if the sequences or `--min_cov` have changed, so `sequence
+> number` updates while `cut-off` and `confidence` do not. `--redo yes` overwrites
+> only the datasets in the current run, so entries for datasets no longer produced
+> stay in the raw table. For a clean re-prediction, move the old outputs aside
+> first:
+>
+> ``` bash
+> mkdir -p data/ITS2/pre_gate
+> mv data/ITS2/eukaryome.predicted data/ITS2/eukaryome_raw_cutoffs.* data/ITS2/pre_gate/
+> rm -f data/ITS2/eukaryome.sim
+> ```
 
 Example:
 
@@ -361,6 +383,8 @@ Rscript R/predict.R \
   --end_threshold 1.0 \
   --step 0.001 \
   --min_multiseq_groups 10 \
+  --min_cov 80 \
+  --redo yes \
   --cutoff_round_to 0.005 \
   --run_parallel yes \
   --n_cpus 80 \
