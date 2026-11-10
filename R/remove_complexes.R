@@ -26,6 +26,16 @@
 # one genus; cross-genus 100%-identity hits are themselves usually
 # contamination, not biology, and are out of scope here).
 #
+# Identity definition (2026-11-10): --iddef defaults to 1, the definition used
+# for cut-off prediction (terminal gaps count). The input is dereplicated (every
+# sequence is a distinct string), so at --threshold 1.0 an --iddef 1 run finds
+# no complex: tested on ITS2 in Aspergillus, Penicillium, Fusarium,
+# Cladosporium, Trichoderma, Alternaria, Russula and Inocybe, 0 cross-species
+# pairs reach 100% under --iddef 1 against 108-2,806 per genus under --iddef 2,
+# every one of them between sequences of different lengths (one contained in
+# the other). Identical sequences are already resolved by dereplicate_lca.R,
+# which takes their LCA. Pass --iddef 2 to detect complexes as before.
+#
 # Deliberately NOT ported from dnabarcoder, per code review:
 #   - MergeComplexes() reads a module-level `classes` global instead of taking
 #     it as a parameter.
@@ -122,8 +132,15 @@ option_list <- list(
                            "excess is randomly downsampled (mirrors predict.R's own",
                            "cap) to bound per-group vsearch runtime/memory on the",
                            "largest genera. [default: %default]")),
-  make_option("--iddef", type = "integer", default = 2L, metavar = "0-4",
-              help = "vsearch --iddef pairwise identity definition [default: %default]"),
+  make_option("--iddef", type = "integer", default = 1L, metavar = "0-4",
+              help = paste("vsearch --iddef pairwise identity definition. Default 1",
+                           "(terminal gaps count), as in R/predict.R. NB: the input is",
+                           "dereplicated, so no two sequences are identical, and under",
+                           "--iddef 1 a pair can reach --threshold 1.0 only if identical:",
+                           "at 1.0 this step then finds no complexes. --iddef 2 ignores",
+                           "terminal gaps, so it finds species identical over their",
+                           "overlap (one sequence contained in the other).",
+                           "[default: %default]")),
   make_option("--id_col", type = "character", default = "id", metavar = "STR",
               help = "ID column name in the classification file [default: %default]"),
   make_option("--n_cpus", type = "integer",

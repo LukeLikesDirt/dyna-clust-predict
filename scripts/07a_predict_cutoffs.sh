@@ -40,13 +40,16 @@ readonly MIN_MULTISEQ_GROUPS=10
 # Fungi's species-level cutoff at a conventional, defensible ~0.97 rather
 # than reporting spurious precision like 0.9683.
 readonly CUTOFF_ROUND_TO=0.005
-# A pair counts only if vsearch's qcov and tcov are both at least this percentage.
-# --iddef 2 excludes terminal gaps, so unrelated sequences can score 100% from a
-# few overlapping bases, which chains broad datasets together under single
-# linkage. Species within kingdom Fungi: 0.99/F 0.44 ungated, 0.97/F 0.77 at 80.
-readonly MIN_COV=80
+# vsearch identity definition: 1 = matching columns / alignment length with
+# terminal gaps included, and no coverage filter (decided 2026-11-10). The
+# references are full-length ITSx-extracted regions, so a length difference is
+# a real difference and two sequences that overlap by a few bases cannot score
+# high. This replaces --iddef 2 (terminal gaps ignored) plus a qcov/tcov >= 80%
+# gate (--min_cov, now removed from R/predict.R), which that definition needed
+# because a few overlapping bases could score 100%.
+readonly IDDEF=1
 # Recompute F-measures instead of reusing those cached in <prefix>.predicted,
-# which otherwise stay frozen when the input sequences or MIN_COV change.
+# which otherwise stay frozen when the input sequences or IDDEF change.
 readonly REDO="yes"
 
 # Start thresholds per target rank
@@ -92,6 +95,35 @@ declare -A REGION_CLASS
 REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
 REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"
 REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.classification"
+
+# report_floor_hits <raw_cutoffs_file>
+# Lists datasets whose reported cut-off sits at the bottom of the sweep
+# (<= START_THRESH + 0.005 for its rank): their F optimum may lie lower. More
+# likely under --iddef 1, which scores pairs lower than --iddef 2 did (on the
+# old --iddef 2 table: 12 species, 37 genus, 15 family and 3 order datasets
+# within 0.01 of their start). Reported, never changed: lowering START_THRESH
+# also moves the middle of a tied F range, so it is a decision, not a fix.
+report_floor_hits() {
+    local raw="$1"
+    [[ -f "$raw" ]] || return 0
+    echo ""
+    echo "--- Cut-offs at the bottom of the sweep (<= start threshold + 0.005): $raw ---"
+    awk -F'\t' -v sp="${START_THRESH[species]}" -v ge="${START_THRESH[genus]}" \
+               -v fa="${START_THRESH[family]}" -v od="${START_THRESH[order]}" \
+               -v cl="${START_THRESH[class]}" -v ph="${START_THRESH[phylum]}" '
+        BEGIN { st["species"] = sp; st["genus"] = ge; st["family"] = fa
+                st["order"] = od; st["class"] = cl; st["phylum"] = ph }
+        NR == 1 { next }
+        ($1 in st) && ($4 + 0 <= st[$1] + 0.005 + 1e-9) {
+            n[$1]++; total++
+            if (shown[$1]++ < 5) printf "  %-8s %-8s %-30s cut-off %s  F %s\n", $1, $2, $3, $4, $5
+        }
+        END {
+            if (!total) { print "  none"; exit }
+            for (r in n) printf "  %s: %d dataset(s)\n", r, n[r]
+            print "  If many, consider a lower START_THRESH for that rank and re-run it."
+        }' "$raw"
+}
 
 # =============================================================================
 # DIRECTORY SETUP
@@ -223,7 +255,7 @@ for region in "${REGIONS[@]}"; do
                 --end_threshold  "$END_THRESH" \
                 --step           "$STEP" \
                 --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
-                --min_cov        "$MIN_COV" \
+                --iddef          "$IDDEF" \
                 --redo           "$REDO" \
                 --cutoff_round_to "$CUTOFF_ROUND_TO" \
                 --prefix         "$PREFIX" \
@@ -297,7 +329,7 @@ for region in "${REGIONS[@]}"; do
             --end_threshold  "$END_THRESH" \
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
-            --min_cov        "$MIN_COV" \
+            --iddef          "$IDDEF" \
             --redo           "$REDO" \
             --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
@@ -323,6 +355,8 @@ for region in "${REGIONS[@]}"; do
         rm -f "$tmp_fasta" "$tmp_class"
 
     done
+
+    report_floor_hits "./data/${region}/${PREFIX}_raw_cutoffs.txt"
 
     echo ""
     echo "=== REGION $region COMPLETE at $(date) ==="

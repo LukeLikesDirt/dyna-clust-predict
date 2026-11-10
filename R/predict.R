@@ -7,6 +7,13 @@
 # Uses vsearch --allpairs_global (global alignment) for similarity computation.
 # A pre-computed .sim file may be supplied via --sim to skip that step.
 #
+# Similarity is vsearch --iddef 1 (matching columns / alignment length, terminal
+# gaps included) with no coverage filter. The references are full-length,
+# ITSx-extracted regions, so a length difference is a real difference and is
+# scored as one, and two sequences that overlap by only a few bases cannot
+# score high. Under --iddef 2 (terminal gaps ignored) they could score 100%,
+# which is why an earlier version needed a coverage gate (qcov and tcov >= 80%).
+#
 # Supports both sequential and parallel (furrr/future) dataset processing,
 # controlled by --run_parallel (default: yes).
 #
@@ -124,19 +131,12 @@ option_list <- list(
                            "Default 0 (off) preserves existing behaviour.",
                            "[default: %default]")),
   make_option("--iddef",
-              type = "integer", default = 2L, metavar = "0-4",
+              type = "integer", default = 1L, metavar = "0-4",
               help = paste("vsearch --iddef pairwise identity definition.",
-                           "Default 2 (edit distance excluding terminal gaps) matches",
-                           "vsearch's own default and current pipeline behaviour.",
-                           "[default: %default]")),
-  make_option("--min_cov",
-              type = "double", default = 0, metavar = "0-100",
-              help = paste("Ignore pairs whose vsearch qcov or tcov is below this",
-                           "percentage. --iddef 2 excludes terminal gaps, so two unrelated",
-                           "sequences can score 100% from a few overlapping bases, and",
-                           "single linkage then chains them together. Applies only to",
-                           "similarities computed by this run, not to a loaded .sim file.",
-                           "Default 0 (off) preserves existing behaviour. [default: %default]")),
+                           "Default 1: matching columns / alignment length, terminal",
+                           "gaps included, so a length difference counts against",
+                           "identity and a short overlap cannot score high. No",
+                           "coverage filter is applied. [default: %default]")),
   make_option("--tie_tolerance",
               type = "double", default = 0, metavar = "NUM",
               help = paste("Widen the tied-optimum-threshold selection from exact",
@@ -197,12 +197,7 @@ if (is.null(opt$input))           stop("--input is required.")
 if (!file.exists(opt$input))      stop("FASTA file not found: ", opt$input)
 if (opt$rank == "")               stop("--rank is required (e.g. --rank species).")
 if (nchar(opt$classification) == 0) stop("--classification is required.")
-if (is.na(opt$min_cov) || opt$min_cov < 0 || opt$min_cov > 100) {
-  stop("--min_cov must be a percentage between 0 and 100.")
-}
-if (opt$min_cov > 0 && opt$min_cov <= 1) {
-  stop("--min_cov is a percentage: use 80 for 80%, not 0.8.")
-}
+if (is.na(opt$iddef) || !opt$iddef %in% 0:4) stop("--iddef must be 0, 1, 2, 3 or 4.")
 
 # ── Assign parameters to short names ─────────────────────────────────────────
 
@@ -223,7 +218,6 @@ max_prop_limit  <- opt$max_proportion
 min_cutoff      <- opt$min_cutoff
 min_multiseq_groups <- opt$min_multiseq_groups
 iddef           <- opt$iddef
-min_cov         <- opt$min_cov
 tie_tolerance   <- opt$tie_tolerance
 cutoff_round_to <- opt$cutoff_round_to
 id_col          <- opt$id_col
@@ -311,17 +305,14 @@ load_sim <- function(sim_file) {
 # ignore.stdout / ignore.stderr suppress per-worker vsearch logging noise.
 # tmp_dir is used so workers writing concurrent subset FASTAs do not collide
 # with any files in the main output directory.
-# min_cov > 0 drops pairs where either sequence is covered below that percentage.
 
-compute_sim <- function(fasta_file, n_threads, tmp_dir, iddef = 2L, min_cov = 0) {
+compute_sim <- function(fasta_file, n_threads, tmp_dir, iddef = 1L) {
   if (!dir.exists(tmp_dir)) dir.create(tmp_dir, recursive = TRUE)
   vsearch_out <- file.path(tmp_dir, paste0(basename(fasta_file), ".vsearch.txt"))
 
-  gated      <- min_cov > 0
-  userfields <- if (gated) "query+target+id+qcov+tcov" else "query+target+id"
   vsearch_cmd <- sprintf(
-    "vsearch --allpairs_global '%s' --acceptall --userout '%s' --userfields %s --iddef %d --threads %d",
-    fasta_file, vsearch_out, userfields, iddef, n_threads
+    "vsearch --allpairs_global '%s' --acceptall --userout '%s' --userfields query+target+id --iddef %d --threads %d",
+    fasta_file, vsearch_out, iddef, n_threads
   )
   if (system(vsearch_cmd, ignore.stdout = TRUE, ignore.stderr = TRUE) != 0) {
     stop("vsearch failed for: ", fasta_file)
@@ -330,18 +321,13 @@ compute_sim <- function(fasta_file, n_threads, tmp_dir, iddef = 2L, min_cov = 0)
     stop("vsearch produced no output for: ", fasta_file)
   }
 
-  # Parse: query <tab> target <tab> percent_identity [<tab> qcov <tab> tcov]
+  # Parse: query <tab> target <tab> percent_identity
   b <- fread(vsearch_out, sep = "\t", header = FALSE,
-             col.names = c("qid", "sid", "pident", if (gated) c("qcov", "tcov")),
-             colClasses = c("character", "character", "numeric",
-                            if (gated) c("numeric", "numeric")))
+             col.names = c("qid", "sid", "pident"),
+             colClasses = c("character", "character", "numeric"))
   b[, score := round(pident / 100, 4)]
 
-  # Taken before gating, so a sequence with every pair gated out stays as a
-  # self-only node rather than disappearing from the matrix.
   all_ids <- unique(c(b$qid, b$sid))
-  if (gated) b <- b[qcov >= min_cov & tcov >= min_cov]
-
   sim_dt  <- rbindlist(list(
     data.table(i = b$qid,   j = b$sid,   score = b$score),
     data.table(i = b$sid,   j = b$qid,   score = b$score),
@@ -687,8 +673,7 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
                             sim_dt, fasta_file, output_dir,
                             start_t, end_t, step_t, redo, existing,
                             max_prop_limit, vsearch_threads, tmp_dir,
-                            iddef = 2L, tie_tolerance = 0, cutoff_round_to = 0,
-                            min_cov = 0) {
+                            iddef = 1L, tie_tolerance = 0, cutoff_round_to = 0) {
   classes  <- load_classes(ds_ids, cls_df, rank, id_col)
   n_seqs   <- length(ds_ids)
   n_groups <- length(classes)
@@ -717,7 +702,7 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
     tmp_fasta <- file.path(tmp_dir,
                            paste0(gsub("[^A-Za-z0-9_]", "_", dataset_name), "_subset.fasta"))
     write_subset_fasta(fasta_file, ds_ids, tmp_fasta)
-    working_sim <- compute_sim(tmp_fasta, vsearch_threads, tmp_dir, iddef, min_cov)
+    working_sim <- compute_sim(tmp_fasta, vsearch_threads, tmp_dir, iddef)
     unlink(tmp_fasta)
   }
 
@@ -850,13 +835,14 @@ sim_dt <- data.table(i = character(0), j = character(0), score = numeric(0))
 # next dataset with no edges. --redo yes therefore recomputes it.
 use_saved_sim <- file.exists(sim_file_path) && (nchar(sim_file_arg) > 0 || !redo)
 
-if (min_cov > 0 && use_saved_sim) {
-  cat("[predict] WARNING: --min_cov does not apply to the loaded similarity matrix:",
-      sim_file_path, "\n[predict]   It must already be gated (R/compute_sim.R --min_cov).\n")
+if (use_saved_sim) {
+  cat("[predict] NOTE: similarities are read from", sim_file_path,
+      "\n[predict]   --iddef does not apply to a loaded matrix; it must have been computed with",
+      sprintf("--iddef %d (R/compute_sim.R).\n", iddef))
 }
-if (min_cov > 0 && !redo && length(prediction_dict) > 0) {
-  cat("[predict] WARNING: --min_cov without --redo yes reuses any F-measures cached in",
-      prediction_file, "\n[predict]   whatever gate they were computed with.\n")
+if (!redo && length(prediction_dict) > 0) {
+  cat("[predict] WARNING: without --redo yes, F-measures cached in", prediction_file,
+      "\n[predict]   are reused, whatever --iddef or input sequences they were computed with.\n")
 }
 
 if (end_t >= start_t && end_t > 0) {
@@ -866,7 +852,7 @@ if (end_t >= start_t && end_t > 0) {
     # Global prediction: compute similarity once for all sequences
     if (length(seq_ids) <= max_seq_no) {
       cat("[predict] No .sim file found. Computing similarity with vsearch...\n")
-      sim_dt <- compute_sim(fasta_file, n_cpus, tmp_dir, iddef, min_cov)
+      sim_dt <- compute_sim(fasta_file, n_cpus, tmp_dir, iddef)
       save_sim(sim_dt, sim_file_path)
       cat("[predict] Similarity matrix saved to:", sim_file_path, "\n")
     } else {
@@ -1030,7 +1016,6 @@ for (rank in rank_list) {
           vsearch_threads = vthreads,
           tmp_dir         = tmp_dir,
           iddef           = iddef,
-          min_cov         = min_cov,
           tie_tolerance   = tie_tolerance,
           cutoff_round_to = cutoff_round_to
         ),

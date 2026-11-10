@@ -26,6 +26,7 @@
 readonly SIM="./R/compute_sim.R"
 readonly TMP_DIR="./tmp"
 readonly MIN_SIM=0
+readonly IDDEF=1          # vsearch identity definition, as in 07a/07c (terminal gaps count)
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
@@ -80,6 +81,7 @@ echo "=== COMPUTING VSEARCH SIMILARITY MATRICES ==="
 echo "$(date)"
 echo "Threads : $N_CPUS"
 echo "min_sim : $MIN_SIM"
+echo "iddef   : $IDDEF"
 echo ""
 
 for region in "${REGIONS[@]}"; do
@@ -125,6 +127,7 @@ for region in "${REGIONS[@]}"; do
             --input  "$tmp_fasta" \
             --out    "./data/${region}" \
             --min_sim "$MIN_SIM" \
+            --iddef   "$IDDEF" \
             --n_cpus  "$N_CPUS"
 
         if [[ $? -ne 0 ]]; then

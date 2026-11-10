@@ -37,6 +37,13 @@ readonly REMOVE_COMPLEXES="./R/remove_complexes.R"
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
 readonly THRESHOLD=1.0
+# vsearch identity definition, as in 07a/07c (terminal gaps count). The input
+# is dereplicated, so at THRESHOLD=1.0 IDDEF=1 finds no complexes (identical
+# sequences were already merged to their LCA by dereplicate_lca.R); IDDEF=2
+# finds species whose sequences are identical over their overlap, as before
+# 2026-11-10. See the note in R/remove_complexes.R. The project owner decided on
+# 2026-11-10 to keep IDDEF=1 here too (one definition throughout).
+readonly IDDEF=1
 readonly MAX_HUB_SPECIES=3
 readonly MIN_SPECIES_PER_PARENT=2
 readonly REQUIRE_COMPLETE="yes"
@@ -118,6 +125,7 @@ for region in "${REGION_LABELS[@]}"; do
         --classification_out     "${REGION_CLASS_OUT[$region]}" \
         --manifest_out            "${REGION_MANIFEST[$region]}" \
         --threshold              "$THRESHOLD" \
+        --iddef                  "$IDDEF" \
         --max_hub_species        "$MAX_HUB_SPECIES" \
         --min_species_per_parent "$MIN_SPECIES_PER_PARENT" \
         --require_complete       "$REQUIRE_COMPLETE" \

@@ -14,7 +14,8 @@ across taxonomic ranks using a curated ITS reference database
 The pipeline:
 
 -   Extracts ITS1 and ITS2 subregions using ITSx
--   Computes global pairwise similarity using vsearch
+-   Computes global pairwise similarity using vsearch (`--iddef 1`: terminal
+    gaps count, no coverage filter; see [Similarity definition](#similarity-definition))
 -   Optimises similarity cut-offs using F-measure
 -   Supports parallel processing for efficient large-scale analyses
 
@@ -28,7 +29,8 @@ The workflow is conceptually adapted from
 ## Pipeline steps
 
   `scripts/01_reformat_ITS.sh`         Download EUKARYOME, reformat headers,
-                                       extract taxonomy
+                                       extract taxonomy, canonicalise the lineage
+                                       (one parent per taxon)
 
   `scripts/02_derep_and_clean.sh`      Length-filter, standardise infraspecific
                                        annotations, and LCA-dereplicate
@@ -63,6 +65,9 @@ All scripts must be run from the **project root directory**.
   `R/utils.R`               Shared utility functions (e.g., `is_identified()`)
 
   `R/reformat.R`            FASTA header parsing and taxonomy extraction
+
+  `R/canonicalise_lineage.R` Gives every named taxon exactly one parent
+                            (`canonicalise_lineage()` in `R/utils.R`)
 
   `R/check_annotations.R`   Infraspecific annotation standardisation
 
@@ -171,6 +176,40 @@ reviewable diff rather than a silent rename.
 Manifest columns: `original_genus`, `kingdom`, `n_sequences`,
 `disambiguated_genus`.
 
+### Lineage canonicalisation
+
+Used in: `canonicalise_lineage.R` (via `01_reformat_ITS.sh`, straight after
+`reformat.R`)
+
+EUKARYOME is not a strict tree: some names sit under more than one parent
+(in ITS2, 76 labels: 52 genera, 12 families, 6 orders, 6 classes; e.g.
+*Cladosporiaceae* under Cladosporiales for 564 records and Dothideales for
+344, *Candida* under 6 families, *Triscelophorus* under two spellings of its
+family). Left alone, `consolidate_cutoffs.R` warns that such names "have an
+inconsistent parent ... across the classification file" and walks their
+ancestors by the modal parent, and `dereplicate_lca.R` truncates the LCA of
+identical sequences at the conflicting rank.
+
+Each named label is therefore given one parent before anything else uses the
+classification: its modal parent among identified parents, or among incertae
+sedis parents if it has no identified one (an identified parent beats an
+incertae one however few records carry it, and fills a parent that is missing
+in some records); ties go to the alphabetically first. The vote is taken on
+the original table at every rank and applied bottom-up, so a record's lineage
+becomes the chain of chosen parents above its finest named label. Records
+under a marker kingdom (`_mitochondrion`, `_pseudogene`, ...) neither vote nor
+change. The run stops if a record would move to another kingdom (a
+cross-kingdom homonym that needs a `(Kingdom)` suffix) or if a label still has
+two parents. The rule is the same as in the ITS2 clustering pipeline that
+consumes these files, so that pipeline's own pass finds nothing left to change.
+
+    --classification_in   FILE  Classification from reformat.R [required]
+    --classification_out  FILE  Output (may be the input path) [required]
+    --manifest_out        FILE  Labels that had more than one parent [default: data/lineage_canonicalisation.txt]
+
+Manifest columns: `rank`, `child`, `chosen_parent`, `n_parents`, `n_records`,
+`n_records_changed`, `parents` (each parent with its record count).
+
 ## Completeness annotation
 
 Used in: `append_completeness.R` (via `03_extract_subregions.sh`)
@@ -210,7 +249,19 @@ complex graph before clustering, guarding against exactly this.
     --require_complete        yes/no Restrict to its_complete rows; drop the rest [default: yes]
     --max_seq_no              INT    Max sequences per parent group; excess is randomly
                                      downsampled [default: 20000]
-    --iddef                   0-4    vsearch pairwise identity definition [default: 2]
+    --iddef                   0-4    vsearch pairwise identity definition [default: 1]
+
+With `--iddef 1` and `--threshold 1.0`, complex removal finds nothing: the
+input is dereplicated (every sequence is a distinct string), and under
+`--iddef 1` only identical sequences reach 100%, which `dereplicate_lca.R` has
+already merged to their LCA. Tested on ITS2 in eight large genera
+(*Aspergillus*, *Penicillium*, *Fusarium*, *Cladosporium*, *Trichoderma*,
+*Alternaria*, *Russula*, *Inocybe*): 0 cross-species pairs at 100% under
+`--iddef 1`, against 108-2,806 per genus under `--iddef 2`, all between
+sequences of different lengths (one contained in the other). Run with
+`--iddef 2` (set `IDDEF=2` in `04_remove_complexes.sh`) to detect complexes as
+before 2026-11-10. Production keeps `--iddef 1` for this step too (project owner's
+decision, 2026-11-10): one similarity definition throughout.
 
 Example:
 
@@ -329,16 +380,11 @@ Threshold-selection controls:
                             production -- exact-equality tie-breaking plus
                             --cutoff_round_to's coarser reporting grid was judged simpler,
                             without a meaningful accuracy tradeoff.
-    --iddef          0-4    vsearch pairwise identity definition (default: 2, vsearch's own
-                            default). Investigation found --iddef 1 costs 0.05-0.15
-                            F-measure even on completeness-filtered data, so the default is
-                            unchanged in production; exposed for future experimentation.
-    --min_cov        0-100  Ignore pairs whose vsearch qcov or tcov is below this percentage
-                            (default: 0/off; production runs use 80). --iddef 2 excludes
-                            terminal gaps, so unrelated sequences can score 100% from a few
-                            overlapping bases, and single linkage then chains broad datasets
-                            into giant components. Applies only to similarities computed by
-                            the run, not to a loaded .sim file (use compute_sim.R --min_cov).
+    --iddef          0-4    vsearch pairwise identity definition (default: 1, matching
+                            columns / alignment length with terminal gaps included; no
+                            coverage filter). Applies only to similarities computed by the
+                            run, not to a loaded .sim file (compute_sim.R takes the same
+                            option). See Similarity definition below.
     --cutoff_round_to  FLOAT  Round the reported cut-off to the nearest multiple of this
                               value (default: 0/off; production runs use 0.005). The
                               confidence value is re-synced to the F-measure actually
@@ -359,15 +405,15 @@ Execution controls:
                               path by an earlier run (default: no; production runs use yes).
 
 > **Re-running:** without `--redo yes`, F-measures already in `<prefix>.predicted`
-> are reused even if the sequences or `--min_cov` have changed, so `sequence
+> are reused even if the sequences or `--iddef` have changed, so `sequence
 > number` updates while `cut-off` and `confidence` do not. `--redo yes` overwrites
 > only the datasets in the current run, so entries for datasets no longer produced
 > stay in the raw table. For a clean re-prediction, move the old outputs aside
 > first:
 >
 > ``` bash
-> mkdir -p data/ITS2/pre_gate
-> mv data/ITS2/eukaryome.predicted data/ITS2/eukaryome_raw_cutoffs.* data/ITS2/pre_gate/
+> mkdir -p data/ITS2/pre_iddef1
+> mv data/ITS2/eukaryome.predicted data/ITS2/eukaryome_raw_cutoffs.* data/ITS2/pre_iddef1/
 > rm -f data/ITS2/eukaryome.sim
 > ```
 
@@ -383,7 +429,7 @@ Rscript R/predict.R \
   --end_threshold 1.0 \
   --step 0.001 \
   --min_multiseq_groups 10 \
-  --min_cov 80 \
+  --iddef 1 \
   --redo yes \
   --cutoff_round_to 0.005 \
   --run_parallel yes \
@@ -402,6 +448,28 @@ Writes three files to `--out` (e.g. for `--prefix eukaryome`):
 wherever `subset.R`'s filters excluded a parent taxon. The pipeline's actual
 deliverable is `consolidate_cutoffs.R`'s gap-filled, monotonicity-repaired
 `eukaryome_cutoffs.txt` (next section) -- a different file, not this one.
+
+## Similarity definition
+
+Every vsearch call in the pipeline (`compute_sim.R`, `predict.R`,
+`remove_complexes.R`) uses `--iddef 1`: identity = matching columns /
+alignment length, **terminal gaps included**, with **no coverage filter**
+(`--query_cov`/`--target_cov`, or the former `--min_cov`). Decided 2026-11-10.
+The references are either trimmed to the same primers or ITSx-extracted
+full-length (non-partial) regions, so a length difference between two
+sequences is a real difference and is scored as one; the few terminal bases
+of ITSx boundary noise are not a concern at the identities that decide a
+cut-off. Two sequences that overlap by only a few bases cannot score high, so
+no coverage filter is needed.
+
+This replaces `--iddef 2` (terminal gaps ignored) plus a `qcov >= 80 and
+tcov >= 80` gate (`--min_cov 80`, commit `6394548`, now removed). Under
+`--iddef 2`, two unrelated sequences whose ends overlap by a few bases score
+100%, and single linkage chains broad datasets into giant components, which is
+what the gate was for (`tests/test_iddef.R` builds that case). Cut-offs
+predicted under one definition are not valid under the other: re-predict from
+step 01, and use `--iddef 1` with no coverage filter wherever the cut-offs are
+applied.
 
 ## Cutoff consolidation
 

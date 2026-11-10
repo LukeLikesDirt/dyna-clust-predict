@@ -130,8 +130,10 @@ if (nrow(cutoffs[higher_rank == GLOBAL_HIGHER_RANK]) == 0) {
 
 # ── Build the taxonomic lineage table ────────────────────────────────────────
 # For each rank phylum..genus, map each taxon name to its parent at the rank
-# above, taken as the mode across the classification file (handles the rare
-# case of an inconsistent LCA assignment for one name).
+# above, taken as the mode across the classification file. Since 2026-11-10
+# the classification is canonicalised in step 01 (R/canonicalise_lineage.R),
+# so every name has one parent and the mode is that parent; the warning below
+# now only fires for a classification built without that step.
 
 build_lineage_table <- function(cls) {
   lineage <- list()
