@@ -1,0 +1,12 @@
+{
+  "phylum": {
+    "All": {
+      "higher_rank": "global",
+      "cut-off": 0.66,
+      "confidence": 0.3961,
+      "sequence number": 500,
+      "group number": 35,
+      "max proportion": 0.34
+    }
+  }
+}

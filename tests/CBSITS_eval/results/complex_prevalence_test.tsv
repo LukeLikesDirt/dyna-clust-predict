@@ -1,0 +1,7 @@
+genus	n_seq	n_species	n_complexes	largest_complex	species_removed	pct_species_removed	seqs_removed	pct_seqs_removed
+Fusarium	774	152	5	26	31	20.4	334	43.2
+Alternaria	417	150	5	28	37	24.7	159	38.1
+Trichoderma	1153	241	6	37	41	17	582	50.5
+Cladosporium	171	62	2	17	17	27.4	51	29.8
+Penicillium	1130	390	15	47	63	16.2	406	35.9
+Aspergillus	1357	350	15	53	70	20	608	44.8

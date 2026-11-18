@@ -1,0 +1,12 @@
+{
+  "order": {
+    "All": {
+      "higher_rank": "global",
+      "cut-off": 0.84,
+      "confidence": 0.4106,
+      "sequence number": 282,
+      "group number": 34,
+      "max proportion": 0.0638
+    }
+  }
+}

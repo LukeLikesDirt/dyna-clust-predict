@@ -1,0 +1,7 @@
+genus	n_seq	n_species	hub_records	complexes_unguarded	largest_unguarded	removed_unguarded	complexes_guarded	largest_guarded	removed_guarded
+Fusarium	751	150	10	7	11	25	7	7	16
+Alternaria	410	150	22	5	28	37	5	8	14
+Trichoderma	1132	241	19	6	33	37	9	17	26
+Cladosporium	169	61	1	2	15	15	3	6	8
+Penicillium	1118	389	18	15	39	54	20	8	35
+Aspergillus	1344	350	28	15	52	69	22	5	35

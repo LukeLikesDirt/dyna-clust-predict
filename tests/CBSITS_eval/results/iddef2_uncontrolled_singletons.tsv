@@ -1,0 +1,7 @@
+iddef	arm	seed	max_seqs_per_species	n	n_spp	pct_singleton	cutoff	f_measure	elapsed_sec
+2	uncontrolled	42	10	5000	1985	48.3	0.962	0.8478	147.5
+2	capped_0.7	42	10	5000	1985	48.3	0.962	0.8478	149
+2	uncontrolled	43	10	5000	2059	49	0.963	0.841	142.4
+2	capped_0.7	43	10	5000	2059	49	0.963	0.841	142.9
+2	uncontrolled	44	10	5000	2128	51.1	0.96	0.8595	146.2
+2	capped_0.7	44	10	5000	2128	51.1	0.96	0.8595	151.9

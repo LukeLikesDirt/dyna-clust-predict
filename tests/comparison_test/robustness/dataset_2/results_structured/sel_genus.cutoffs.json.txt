@@ -1,0 +1,2 @@
+rank	higher_rank	dataset	cut-off	confidence	sequence number	group number	max proportion
+genus	global	All	0.92	0.7249	480	374	0.0125

@@ -1,0 +1,2 @@
+rank	higher_rank	dataset	cut-off	confidence	sequence number	group number	max proportion
+phylum	global	All	0.58	0.3977	300	24	0.3367

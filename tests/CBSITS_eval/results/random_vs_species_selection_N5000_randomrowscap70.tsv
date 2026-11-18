@@ -1,0 +1,4 @@
+N_cap	seed	arm	n	n_spp	pct_singleton	pct_singleton_multi_in_raw	cutoff	f_measure	f_at_1	n_edges	elapsed_sec
+5000	42	random_rows_cap70	2195	1439	70	74.2	0.957	0.8154	0.7449	3562	46.7
+5000	43	random_rows_cap70	2292	1516	70	77.3	0.952	0.8106	0.7525	3750	48.1
+5000	44	random_rows_cap70	2275	1523	70	77.9	0.957	0.811	0.7573	3753	46.7

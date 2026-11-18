@@ -1,0 +1,15 @@
+parent_rank	dataset	n_max70	n_spp_max70	pct_singleton_max70	cut_max70	f_max70	elapsed_sec
+kingdom	Fungi	5000	1717	48.9	0.95	0.8422	145
+phylum	Ascomycota	5000	1892	51.1	0.978	0.8046	124
+phylum	Bryophyta	282	209	69.9	0.993	0.9108	2.3
+class	Sordariomycetes	5000	1874	54.2	0.987	0.6993	122.9
+class	Dothideomycetes	5000	1926	54.4	0.991	0.6764	113.8
+class	Bryopsida	269	199	69.8	0.994	0.9214	2
+class	Cupressopsida	57	43	69.8	1	0.845	0.6
+class	Cycadopsida	64	49	69.4	1	0.9479	0.6
+class	Gastropoda	217	139	69.8	0.99	0.7892	2.1
+order	Hypocreales	5000	1728	55.7	0.993	0.5955	114
+order	Asparagales	151	109	69.7	0.952	0.8982	0.9
+genus	Aspergillus	2114	370	38.6	0.991	0.453	19.4
+genus	Fusarium	1078	213	56.3	0.964	0.436	5
+genus	Colletotrichum	1375	269	57.2	1	0.367	8.2

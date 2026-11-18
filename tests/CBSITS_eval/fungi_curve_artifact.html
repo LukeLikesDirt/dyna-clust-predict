@@ -1,0 +1,226 @@
+<title>Fungi Cutoff Curve</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#F5F6F1; --surface:#FFFFFF; --ink:#1B231F; --muted:#5B6960;
+    --line:#DDE1D8; --line-soft:#EAEDE6;
+    --moss:#2E6B4E; --moss-soft:#DCEBE2;
+    --clay:#B8552E; --clay-soft:#F5E2D8;
+    --ochre:#B4842A;
+    --font-serif:'IBM Plex Serif',ui-serif,Georgia,serif;
+    --font-sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121613; --surface:#1A211C; --ink:#E8ECE5; --muted:#93A095;
+      --line:#2B322C; --line-soft:#212722;
+      --moss:#6FC091; --moss-soft:#1E2E26;
+      --clay:#E38A57; --clay-soft:#302017;
+      --ochre:#E0B565;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121613; --surface:#1A211C; --ink:#E8ECE5; --muted:#93A095;
+    --line:#2B322C; --line-soft:#212722;
+    --moss:#6FC091; --moss-soft:#1E2E26;
+    --clay:#E38A57; --clay-soft:#302017;
+    --ochre:#E0B565;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+    padding:56px 24px 80px;
+  }
+  .page{ max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:36px; }
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  h1{
+    font-family:var(--font-serif); font-weight:500; font-size:clamp(28px,4vw,38px);
+    line-height:1.15; margin:10px 0 12px; text-wrap:balance;
+  }
+  .dek{
+    font-size:16px; line-height:1.6; color:var(--muted); max-width:640px;
+  }
+  .dek b{ color:var(--ink); font-weight:600; }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:28px 28px 20px;
+  }
+
+  .legend{ display:flex; gap:22px; flex-wrap:wrap; margin-bottom:4px; }
+  .legend-item{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+  .swatch{ width:14px; height:3px; border-radius:2px; flex:none; }
+
+  svg{ display:block; width:100%; height:auto; overflow:visible; }
+  .axis-label{ font-family:var(--font-mono); font-size:11px; fill:var(--muted); }
+  .axis-title{ font-family:var(--font-sans); font-size:12px; fill:var(--muted); letter-spacing:.02em; }
+  .gridline{ stroke:var(--line-soft); stroke-width:1; }
+  .axis-line{ stroke:var(--line); stroke-width:1; }
+  .curve-moss{ fill:none; stroke:var(--moss); stroke-width:2.25; }
+  .curve-clay{ fill:none; stroke:var(--clay); stroke-width:2.25; }
+  .peak-dot{ stroke:var(--surface); stroke-width:1.5; }
+  .ref-line{ stroke:var(--ochre); stroke-width:1.25; stroke-dasharray:4 4; }
+  .ref-label{ font-family:var(--font-mono); font-size:11px; fill:var(--ochre); font-weight:500; }
+  .peak-label{ font-family:var(--font-mono); font-size:11px; font-weight:500; }
+
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px;
+    overflow:hidden; margin-top:4px;
+  }
+  .stat{ background:var(--surface); padding:18px 20px; display:flex; flex-direction:column; gap:6px; }
+  .stat-label{ font-size:11px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  .stat-value{ font-family:var(--font-mono); font-size:21px; font-variant-numeric:tabular-nums; }
+  .stat-sub{ font-family:var(--font-mono); font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .stat.moss .stat-value{ color:var(--moss); }
+  .stat.clay .stat-value{ color:var(--clay); }
+
+  .note{ font-size:14.5px; line-height:1.7; color:var(--muted); max-width:640px; }
+  .note b{ color:var(--ink); font-weight:600; }
+  .note code{
+    font-family:var(--font-mono); font-size:.92em; background:var(--line-soft);
+    padding:1px 5px; border-radius:4px; color:var(--ink);
+  }
+
+  footer{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--muted);
+    border-top:1px solid var(--line); padding-top:16px; line-height:1.6;
+  }
+</style>
+
+<div class="page">
+
+  <div>
+    <div class="eyebrow">kingdom Fungi &middot; full ITS &middot; vsearch iddef=2 &middot; n=5000 pool</div>
+    <h1>Where the F&#8209;measure actually peaks</h1>
+    <p class="dek">
+      Both singleton constraints put the optimal cutoff near <b>0.95</b>, well
+      below the ~0.98 expected for real fungal ITS. This is the full
+      per&#8209;threshold curve behind that number &mdash; how sharp the peak is,
+      and what moving up to 0.98 costs in F&#8209;measure.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:var(--moss)"></span>max 50% singleton species</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--clay)"></span>min 2 sequences per species</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--ochre);height:0;border-top:1.5px dashed var(--ochre)"></span>reference: 0.980</div>
+    </div>
+    <svg id="chart" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <p class="note">
+    Neither curve is a sharp spike sitting alone at 0.95 &mdash; both sit on a
+    genuinely flat plateau from about <b>0.94 to 0.965</b> (F moves by only
+    ~0.01&ndash;0.02 across that whole span), and only start declining more
+    steeply above ~0.97. Moving the cutoff up to <b>0.980</b> costs
+    <b>&minus;0.067 F</b> under the 50%&#8209;singleton constraint and
+    <b>&minus;0.086 F</b> under full singleton removal &mdash; real, but a
+    fraction of the <b>&minus;0.31</b> to <b>&minus;0.41</b> F you'd lose
+    pushing all the way back to <code>cut&#8209;off&nbsp;=&nbsp;1.000</code>.
+    0.98 sits on the shoulder of the plateau, not off in the degenerate tail.
+  </p>
+
+  <footer>
+    tests/CBSITS_eval/curve_fungi_singleton.R &middot; data/full_ITS/eukaryome_ITS_nocomplex.{fasta,classification}
+    &middot; seed=42 &middot; sweep step 0.001, thresholds 0.900&ndash;1.000
+  </footer>
+
+</div>
+
+<script>
+const MOSS = [[0.900,0.7694],[0.901,0.7741],[0.902,0.7749],[0.903,0.7778],[0.904,0.7807],[0.905,0.7814],[0.906,0.7837],[0.907,0.7862],[0.908,0.7873],[0.909,0.7916],[0.910,0.7927],[0.911,0.7937],[0.912,0.7953],[0.913,0.7973],[0.914,0.7997],[0.915,0.8012],[0.916,0.8031],[0.917,0.8036],[0.918,0.8056],[0.919,0.8057],[0.920,0.8111],[0.921,0.8116],[0.922,0.8118],[0.923,0.8147],[0.924,0.8168],[0.925,0.8190],[0.926,0.8200],[0.927,0.8214],[0.928,0.8235],[0.929,0.8253],[0.930,0.8270],[0.931,0.8292],[0.932,0.8298],[0.933,0.8312],[0.934,0.8303],[0.935,0.8311],[0.936,0.8329],[0.937,0.8331],[0.938,0.8340],[0.939,0.8349],[0.940,0.8364],[0.941,0.8359],[0.942,0.8366],[0.943,0.8380],[0.944,0.8382],[0.945,0.8371],[0.946,0.8386],[0.947,0.8386],[0.948,0.8372],[0.949,0.8386],[0.950,0.8378],[0.951,0.8374],[0.952,0.8359],[0.953,0.8359],[0.954,0.8360],[0.955,0.8348],[0.956,0.8341],[0.957,0.8334],[0.958,0.8333],[0.959,0.8344],[0.960,0.8311],[0.961,0.8279],[0.962,0.8250],[0.963,0.8273],[0.964,0.8253],[0.965,0.8242],[0.966,0.8222],[0.967,0.8211],[0.968,0.8188],[0.969,0.8180],[0.970,0.8161],[0.971,0.8131],[0.972,0.8087],[0.973,0.8071],[0.974,0.8013],[0.975,0.7999],[0.976,0.7959],[0.977,0.7895],[0.978,0.7865],[0.979,0.7807],[0.980,0.7718],[0.981,0.7676],[0.982,0.7640],[0.983,0.7581],[0.984,0.7540],[0.985,0.7486],[0.986,0.7408],[0.987,0.7391],[0.988,0.7337],[0.989,0.7222],[0.990,0.7104],[0.991,0.7026],[0.992,0.6952],[0.993,0.6884],[0.994,0.6643],[0.995,0.6510],[0.996,0.6361],[0.997,0.6127],[0.998,0.6006],[0.999,0.5343],[1.000,0.5294]];
+const CLAY = [[0.900,0.8028],[0.901,0.8039],[0.902,0.8046],[0.903,0.8075],[0.904,0.8093],[0.905,0.8092],[0.906,0.8128],[0.907,0.8139],[0.908,0.8137],[0.909,0.8182],[0.910,0.8185],[0.911,0.8184],[0.912,0.8210],[0.913,0.8244],[0.914,0.8256],[0.915,0.8263],[0.916,0.8277],[0.917,0.8287],[0.918,0.8325],[0.919,0.8328],[0.920,0.8339],[0.921,0.8348],[0.922,0.8361],[0.923,0.8373],[0.924,0.8380],[0.925,0.8399],[0.926,0.8415],[0.927,0.8434],[0.928,0.8443],[0.929,0.8460],[0.930,0.8478],[0.931,0.8499],[0.932,0.8514],[0.933,0.8560],[0.934,0.8565],[0.935,0.8571],[0.936,0.8574],[0.937,0.8580],[0.938,0.8595],[0.939,0.8585],[0.940,0.8594],[0.941,0.8563],[0.942,0.8574],[0.943,0.8585],[0.944,0.8606],[0.945,0.8608],[0.946,0.8613],[0.947,0.8617],[0.948,0.8628],[0.949,0.8628],[0.950,0.8635],[0.951,0.8623],[0.952,0.8607],[0.953,0.8595],[0.954,0.8568],[0.955,0.8564],[0.956,0.8560],[0.957,0.8556],[0.958,0.8542],[0.959,0.8552],[0.960,0.8559],[0.961,0.8564],[0.962,0.8563],[0.963,0.8556],[0.964,0.8567],[0.965,0.8543],[0.966,0.8492],[0.967,0.8453],[0.968,0.8430],[0.969,0.8381],[0.970,0.8350],[0.971,0.8315],[0.972,0.8290],[0.973,0.8234],[0.974,0.8167],[0.975,0.8156],[0.976,0.8078],[0.977,0.8020],[0.978,0.7941],[0.979,0.7878],[0.980,0.7777],[0.981,0.7715],[0.982,0.7666],[0.983,0.7591],[0.984,0.7501],[0.985,0.7424],[0.986,0.7361],[0.987,0.7243],[0.988,0.7176],[0.989,0.7081],[0.990,0.6977],[0.991,0.6846],[0.992,0.6730],[0.993,0.6595],[0.994,0.6442],[0.995,0.6236],[0.996,0.6005],[0.997,0.5636],[0.998,0.5445],[0.999,0.4574],[1.000,0.4521]];
+
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("chart");
+const W = 800, H = 420;
+const M = { top: 18, right: 26, bottom: 40, left: 46 };
+const plotW = W - M.left - M.right;
+const plotH = H - M.top - M.bottom;
+
+const xDomain = [0.90, 1.00];
+const yDomain = [0.40, 0.90];
+const xPix = t => M.left + (t - xDomain[0]) / (xDomain[1] - xDomain[0]) * plotW;
+const yPix = f => M.top + (1 - (f - yDomain[0]) / (yDomain[1] - yDomain[0])) * plotH;
+
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+// gridlines + axes
+for (let t = 0.90; t <= 1.001; t += 0.02) {
+  const x = xPix(t);
+  svg.appendChild(el("line", { class: "gridline", x1: x, x2: x, y1: M.top, y2: M.top + plotH }));
+  svg.appendChild(el("text", { class: "axis-label", x: x, y: M.top + plotH + 22, "text-anchor": "middle" })).textContent = t.toFixed(2);
+}
+for (let f = 0.40; f <= 0.901; f += 0.1) {
+  const y = yPix(f);
+  svg.appendChild(el("line", { class: "gridline", x1: M.left, x2: M.left + plotW, y1: y, y2: y }));
+  svg.appendChild(el("text", { class: "axis-label", x: M.left - 10, y: y + 4, "text-anchor": "end" })).textContent = f.toFixed(2);
+}
+svg.appendChild(el("line", { class: "axis-line", x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH }));
+svg.appendChild(el("line", { class: "axis-line", x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH }));
+svg.appendChild(el("text", { class: "axis-title", x: M.left + plotW / 2, y: H - 2, "text-anchor": "middle" })).textContent = "similarity threshold";
+const yTitle = el("text", { class: "axis-title", x: 0, y: 0, "text-anchor": "middle", transform: `translate(14,${M.top + plotH / 2}) rotate(-90)` });
+yTitle.textContent = "F-measure";
+svg.appendChild(yTitle);
+
+// reference line at 0.98
+const refX = xPix(0.98);
+svg.appendChild(el("line", { class: "ref-line", x1: refX, x2: refX, y1: M.top, y2: M.top + plotH }));
+svg.appendChild(el("text", { class: "ref-label", x: refX, y: M.top - 4, "text-anchor": "middle" })).textContent = "0.980";
+
+function drawCurve(data, cls) {
+  const d = data.map((p, i) => `${i === 0 ? "M" : "L"} ${xPix(p[0]).toFixed(1)} ${yPix(p[1]).toFixed(1)}`).join(" ");
+  svg.appendChild(el("path", { class: cls, d }));
+}
+drawCurve(MOSS, "curve-moss");
+drawCurve(CLAY, "curve-clay");
+
+function markPeak(data, color, dy, name) {
+  let peak = data[0];
+  for (const p of data) if (p[1] > peak[1]) peak = p;
+  const x = xPix(peak[0]), y = yPix(peak[1]);
+  svg.appendChild(el("circle", { class: "peak-dot", cx: x, cy: y, r: 4, fill: color }));
+  const t = el("text", { class: "peak-label", x: x, y: y + dy, "text-anchor": "middle", fill: color });
+  t.textContent = `${name} peak ${peak[1].toFixed(3)} @ ${peak[0].toFixed(3)}`;
+  svg.appendChild(t);
+}
+markPeak(MOSS, getComputedStyle(document.documentElement).getPropertyValue("--moss").trim(), -30, "50%-singleton");
+markPeak(CLAY, getComputedStyle(document.documentElement).getPropertyValue("--clay").trim(), 26, "min-2-seq");
+
+// mark 0.98 points on each curve
+function markRef(data, color) {
+  const p = data.find(p => Math.abs(p[0] - 0.98) < 1e-6);
+  svg.appendChild(el("circle", { cx: xPix(p[0]), cy: yPix(p[1]), r: 3.5, fill: color, stroke: "var(--surface)", "stroke-width": 1.5 }));
+}
+markRef(MOSS, getComputedStyle(document.documentElement).getPropertyValue("--moss").trim());
+markRef(CLAY, getComputedStyle(document.documentElement).getPropertyValue("--clay").trim());
+
+// stats strip
+const stats = document.getElementById("stats");
+function stat(cls, label, value, sub) {
+  const d = el("div", { class: `stat ${cls}` });
+  const l = el("div", { class: "stat-label" }); l.textContent = label;
+  const v = el("div", { class: "stat-value" }); v.textContent = value;
+  const s = el("div", { class: "stat-sub" }); s.textContent = sub;
+  d.appendChild(l); d.appendChild(v); d.appendChild(s);
+  stats.appendChild(d);
+}
+stat("moss", "50%-singleton peak", "0.946", "F = 0.8386");
+stat("moss", "50%-singleton @ 0.980", "0.7718 F", "−0.0668 vs peak");
+stat("clay", "min-2-seq peak", "0.950", "F = 0.8635");
+stat("clay", "min-2-seq @ 0.980", "0.7777 F", "−0.0858 vs peak");
+</script>

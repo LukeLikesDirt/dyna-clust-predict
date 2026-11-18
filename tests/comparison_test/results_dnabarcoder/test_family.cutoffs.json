@@ -1,0 +1,14 @@
+{
+  "family": {
+    "All": {
+      "cut-off": 0.79,
+      "confidence": 0.7397,
+      "sequence number": 293,
+      "group number": 166,
+      "min alignment length": 400,
+      "fasta filename": "tests/comparison_test/data/test.fasta",
+      "classification filename": "tests/comparison_test/data/test.classification",
+      "max proportion": 0.0614
+    }
+  }
+}

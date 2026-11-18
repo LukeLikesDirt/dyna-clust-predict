@@ -1,0 +1,12 @@
+{
+  "family": {
+    "All": {
+      "higher_rank": "global",
+      "cut-off": 0.76,
+      "confidence": 0.4373,
+      "sequence number": 125,
+      "group number": 17,
+      "max proportion": 0.104
+    }
+  }
+}

@@ -1,0 +1,7 @@
+genus	n_species	hub_complexes	hub_largest	hub_removed	recip2_complexes	recip2_largest	recip2_removed	recip3_complexes	recip3_largest	recip3_removed
+Fusarium	150	7	7	16	2	8	11	2	3	3
+Alternaria	150	5	8	14	3	11	12	2	6	6
+Trichoderma	241	9	17	26	3	15	19	4	9	14
+Cladosporium	61	3	6	8	2	3	3	1	2	1
+Penicillium	389	20	8	35	7	14	22	2	11	14
+Aspergillus	350	22	5	35	4	15	25	6	5	12

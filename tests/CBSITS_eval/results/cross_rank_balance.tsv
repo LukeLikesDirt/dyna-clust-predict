@@ -1,0 +1,12 @@
+parent_rank	dataset	n_current	n_spp_current	cut_current	f_current	n_balanced	n_spp_balanced	cut_balanced	f_balanced	elapsed_sec
+kingdom	Fungi	5000	4252	0.999	0.8865	1504	1234	0.986	0.9129	247.2
+phylum	Ascomycota	5000	3952	0.999	0.8394	5000	3521	0.997	0.7872	319.5
+phylum	Bryophyta	1645	1572	1	0.9703	0	0			30.6
+class	Sordariomycetes	5000	3034	0.998	0.7045	5000	2702	0.997	0.6621	263.3
+class	Dothideomycetes	5000	2921	0.998	0.6971	4118	2333	0.998	0.7256	205.3
+class	Bryopsida	1533	1463	1	0.969	544	519	0.999	0.9747	30.1
+class	Cupressopsida	121	107	1	0.9215	0	0			1.4
+class	Cycadopsida	137	122	1	0.9757	0	0			1.5
+class	Gastropoda	268	190	0.992	0.807	20	19	0.994	0.9667	3.5
+order	Hypocreales	5000	1926	0.993	0.575	5000	1844	0.993	0.5721	224.9
+order	Asparagales	5000	4968	1	0.9948	2702	2674	1	0.9928	269

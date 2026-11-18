@@ -1,0 +1,5 @@
+genus	n_all	cut_all	f_all	len_lo	len_hi	n_band	cut_band	f_band
+Fusarium	2175	1	0.2878	449	492	1098	0.999	0.3209
+Alternaria	1307	1	0.3299	476	517	677	0.999	0.4325
+Trichoderma	2444	1	0.2973	513	554	1252	0.999	0.3866
+Cladosporium	640	1	0.2321	454	487	329	0.999	0.4329

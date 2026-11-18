@@ -1,0 +1,14 @@
+{
+  "phylum": {
+    "All": {
+      "cut-off": 0.58,
+      "confidence": 0.3977,
+      "sequence number": 300,
+      "group number": 24,
+      "min alignment length": 400,
+      "fasta filename": "tests/comparison_test/data/test.fasta",
+      "classification filename": "tests/comparison_test/data/test.classification",
+      "max proportion": 0.3367
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "class": {
+    "All": {
+      "higher_rank": "global",
+      "cut-off": 0.88,
+      "confidence": 0.3295,
+      "sequence number": 500,
+      "group number": 108,
+      "max proportion": 0.176
+    }
+  }
+}

@@ -1,0 +1,2 @@
+rank	higher_rank	dataset	cut-off	confidence	sequence number	group number	max proportion
+order	global	All	0.89	0.5142	497	217	0.0382

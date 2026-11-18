@@ -1,0 +1,2 @@
+Rank	Dataset	cut-off	confidence	sequence number	group number	min alignment length	max proportion	fasta filename	classification filename
+genus	All	0.84	0.8363	300	224	400	0.06	tests/comparison_test/data/test.fasta	tests/comparison_test/data/test.classification

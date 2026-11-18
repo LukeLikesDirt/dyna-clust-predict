@@ -1,0 +1,3 @@
+N_cap	seed	arm	n	n_spp	pct_singleton	pct_singleton_multi_in_raw	cutoff	f_measure	f_at_1	n_edges	elapsed_sec
+20000	42	random_rows	20000	13616	77.4	65.3	0.992	0.7735	0.7599	196303	1928.8
+20000	42	species_aware	20000	7321	50.1	0	0.969	0.7684	0.5713	262761	1873.6

@@ -1,0 +1,8 @@
+dataset	n_seq	n_species	singleton_frac	cut_current	f_current	cut_nosingle	f_nosingle
+Caladenia	39	39	1	1	0.9658		
+Cypripedium	41	41	1	1	0.9512		
+Pterostylis	93	93	1	1	0.9928		
+Cladosporium	640	137	0.445	1	0.2321	1	0.215
+Alternaria	1307	274	0.38	1	0.3299	1	0.3044
+Fusarium	2175	331	0.462	1	0.2878	1	0.2632
+Trichoderma	2444	326	0.393	1	0.2973	0.997	0.2723

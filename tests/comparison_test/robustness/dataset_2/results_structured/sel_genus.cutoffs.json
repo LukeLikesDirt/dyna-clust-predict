@@ -1,0 +1,12 @@
+{
+  "genus": {
+    "All": {
+      "higher_rank": "global",
+      "cut-off": 0.92,
+      "confidence": 0.7249,
+      "sequence number": 480,
+      "group number": 374,
+      "max proportion": 0.0125
+    }
+  }
+}

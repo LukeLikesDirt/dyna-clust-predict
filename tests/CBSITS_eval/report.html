@@ -1,0 +1,628 @@
+<title>CBSITS Curation Test</title>
+<style>
+  :root{
+    color-scheme: light;
+    --page:        #F2F4EE;
+    --surface:     #FBFCF9;
+    --surface-2:   #EFF2E9;
+    --ink:         #141814;
+    --ink-2:       #4B564C;
+    --muted:       #838C80;
+    --line:        #DDE2D6;
+    --baseline:    #C6CDBE;
+    --euk:         #C4632F;
+    --euk-soft:    #F3E3D8;
+    --cbs:         #0A8B7C;
+    --cbs-soft:    #DCEEEA;
+    --shadow:      0 1px 2px rgba(20,24,20,0.04), 0 8px 24px rgba(20,24,20,0.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --page:      #12150F;
+      --surface:   #191D16;
+      --surface-2: #1E231C;
+      --ink:       #EFF3EA;
+      --ink-2:     #C3CBBD;
+      --muted:     #8B9484;
+      --line:      #2B3126;
+      --baseline:  #384033;
+      --euk:       #CE6E42;
+      --euk-soft:  #34241B;
+      --cbs:       #219A85;
+      --cbs-soft:  #123029;
+      --shadow:    0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --page:      #12150F;
+    --surface:   #191D16;
+    --surface-2: #1E231C;
+    --ink:       #EFF3EA;
+    --ink-2:     #C3CBBD;
+    --muted:     #8B9484;
+    --line:      #2B3126;
+    --baseline:  #384033;
+    --euk:       #CE6E42;
+    --euk-soft:  #34241B;
+    --cbs:       #219A85;
+    --cbs-soft:  #123029;
+    --shadow:    0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body{ background: var(--page); }
+
+  .doc{
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+    font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+  }
+  .prose{ max-width: 720px; }
+
+  h1, h2, h3{
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  p{ line-height: 1.62; color: var(--ink-2); }
+  .prose p + p { margin-top: 0.9em; }
+  a { color: var(--cbs); }
+
+  .eyebrow{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cbs);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .eyebrow::before{
+    content: "";
+    width: 22px; height: 2px;
+    background: var(--cbs);
+    display: inline-block;
+  }
+
+  h1{ font-size: clamp(30px, 4vw, 44px); line-height: 1.08; margin: 0 0 14px; }
+  .dek{ font-size: 18px; color: var(--ink-2); line-height: 1.55; max-width: 680px; }
+
+  .meta-line{
+    margin-top: 22px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 6px 22px;
+  }
+
+  /* ---------- stat tiles ---------- */
+  .tiles{
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .tile{
+    background: var(--surface);
+    padding: 22px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .tile .value{
+    font-family: "Fraunces", serif;
+    font-size: 30px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .tile .value .arrow{ color: var(--cbs); font-family: "Source Sans 3", sans-serif; }
+  .tile .label{ font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .tile.hi .value{ color: var(--cbs); }
+
+  /* ---------- sections ---------- */
+  section{ margin-top: 64px; }
+  .section-head{ margin-bottom: 22px; }
+  .section-num{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; color: var(--muted); letter-spacing: 0.08em;
+  }
+  h2{ font-size: 25px; margin: 4px 0 0; }
+  h3{ font-size: 17px; margin: 0 0 6px; }
+
+  code, .mono{ font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .prose code{
+    background: var(--surface-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+
+  .pipeline{
+    margin: 22px 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+    gap: 10px;
+  }
+  .pipeline li{
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .pipeline li b{ display:block; color: var(--ink); font-size: 13.5px; margin-bottom:2px; }
+
+  /* ---------- chart ---------- */
+  .chart-card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 32px 22px;
+    box-shadow: var(--shadow);
+  }
+  .legend{
+    display: flex; gap: 22px; margin-bottom: 6px;
+    font-size: 13px; color: var(--ink-2);
+  }
+  .legend span{ display:flex; align-items:center; gap:7px; }
+  .legend i{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .legend i.euk{ background: var(--euk); }
+  .legend i.cbs{ background: var(--cbs); }
+  #dumbbell{ width: 100%; height: auto; display:block; margin-top: 14px; }
+  .chart-foot{ margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- caveats ---------- */
+  .callout{
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--euk);
+    background: var(--euk-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 18px 22px;
+    margin-top: 24px;
+  }
+  .callout h3{ color: var(--ink); }
+  .callout ul{ margin: 8px 0 0; padding-left: 18px; }
+  .callout li{ color: var(--ink-2); line-height: 1.6; margin-bottom: 8px; font-size: 14.5px; }
+  .callout li:last-child{ margin-bottom:0; }
+  .callout b{ color: var(--ink); }
+
+  .verdict{
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--cbs);
+    background: var(--cbs-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+  .verdict p{ color: var(--ink-2); }
+  .verdict p:first-child{ margin-top: 0; }
+
+  /* ---------- table ---------- */
+  .table-wrap{
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+  }
+  table{ border-collapse: collapse; width: 100%; min-width: 880px; font-size: 13.5px; }
+  thead th{
+    position: sticky; top:0;
+    background: var(--surface-2);
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  thead th.num, td.num{ text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td{
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  tbody td.name{ color: var(--ink); font-weight: 600; }
+  tbody tr:hover td{ background: var(--surface-2); }
+  tr.group-row td{
+    background: var(--surface-2);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  tr.group-row:hover td{ background: var(--surface-2); }
+  .delta{ font-variant-numeric: tabular-nums; font-weight: 600; }
+  .delta.up{ color: var(--cbs); }
+  .delta.down{ color: var(--euk); }
+  .n-note{ color: var(--muted); font-size: 12px; }
+
+  footer{
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  footer a{ color: var(--muted); text-decoration: underline; }
+
+  @media (max-width: 720px){
+    .tiles{ grid-template-columns: repeat(2,1fr); }
+    .doc{ padding: 40px 16px 72px; }
+  }
+</style>
+
+<div class="doc">
+
+  <div class="eyebrow">dyna-clust-predict &middot; ITS2 cutoff evaluation</div>
+  <h1>Does curated data fix EUKARYOME's cutoffs?</h1>
+  <p class="dek">EUKARYOME's ITS2 similarity cutoffs run low on confidence for many fungal
+  groups &mdash; the working theory is that metabarcoding-derived sequences are drowning
+  out reliable ones. To test it, the CBS&#8209;KNAW strain barcode set (ex&#8209;type and
+  manually validated cultures) was run through the identical cutoff-prediction pipeline,
+  and compared against EUKARYOME&rsquo;s existing ITS2 table wherever the same taxon was
+  predicted in both.</p>
+  <div class="meta-line">
+    <span>206 taxa matched in both databases</span>
+    <span>&middot;</span>
+    <span>33 selected across 8 taxonomic levels + global</span>
+    <span>&middot;</span>
+    <span>2026-09-05</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile hi">
+      <div class="value">0.62 <span class="arrow">&rarr;</span> 0.80</div>
+      <div class="label">Median F&#8209;measure confidence, EUKARYOME vs. CBSITS, across all 206 matched taxa</div>
+    </div>
+    <div class="tile hi">
+      <div class="value">87%</div>
+      <div class="label">Of matched taxa gain confidence under CBSITS&rsquo;s curated sequences</div>
+    </div>
+    <div class="tile">
+      <div class="value">0.004</div>
+      <div class="label">Median shift in the species&#8209;level cut&#8209;off <em>value itself</em> (n=119) &mdash; at this rank, curation changes confidence, not the threshold</div>
+    </div>
+    <div class="tile hi">
+      <div class="value">99.6%</div>
+      <div class="label">CBSITS whole&#8209;database species cut&#8209;off &mdash; matches the published Vu et al. (2019) ITS threshold almost exactly</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-num">01</div>
+      <h2>What was compared</h2>
+    </div>
+    <div class="prose">
+      <p><b style="color:var(--ink)">CBSITS</b> is the CBS&#8209;KNAW filamentous fungal
+      strain barcode set (Vu, Groenewald, de Vries <i>et al.</i> 2019, <i>Studies in
+      Mycology</i>) &mdash; ~12,000 ITS barcodes from ex&#8209;type and manually validated
+      cultures spanning ~7,300 accepted species. Every sequence traces back to a
+      preserved, identified strain, which makes it a useful negative control against
+      EUKARYOME&rsquo;s much larger but more heterogeneous pool.</p>
+      <p>Its taxonomy headers were parsed into the same
+      <code>kingdom&#8226;phylum&#8226;class&#8226;order&#8226;family&#8226;genus&#8226;species</code>
+      schema EUKARYOME uses, restricted to the 11,674 records with a successful ITSx
+      ITS2 extraction (of 11,715 total). The result is entirely <b style="color:var(--ink)">Fungi</b>
+      &mdash; 81% Ascomycota, 14% Basidiomycota, the remainder early&#8209;diverging lineages
+      &mdash; dominated by common lab genera: <i>Penicillium</i>, <i>Aspergillus</i>,
+      <i>Fusarium</i>, <i>Colletotrichum</i>, <i>Chaetomium</i>, <i>Trichoderma</i>.</p>
+      <p>The exact same <code>R/predict.R</code> sweep that produced EUKARYOME&rsquo;s ITS2
+      table was then run on this set &mdash; identical thresholds, 0.001 step, and the
+      same <code>min_group_no&#8202;=&#8202;10 / min_seq_no&#8202;=&#8202;30 /
+      max_proportion&#8202;=&#8202;1.0</code> filters &mdash; across every rank&#8594;parent
+      combination EUKARYOME's table covers.</p>
+    </div>
+    <ul class="pipeline">
+      <li><b>species &rarr; genus, family</b>120 matched taxa</li>
+      <li><b>genus &rarr; family, order</b>64 matched taxa</li>
+      <li><b>family &rarr; order, class</b>15 matched taxa</li>
+      <li><b>order &rarr; class</b>3 matched taxa</li>
+      <li><b>class &rarr; phylum</b>2 matched taxa</li>
+      <li><b>whole&#8209;database (global)</b>4 ranks, scope differs &mdash; see caveats</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-num">02</div>
+      <h2>Confidence, by rank</h2>
+    </div>
+    <div class="chart-card">
+      <div class="legend">
+        <span><i class="euk"></i>EUKARYOME (raw)</span>
+        <span><i class="cbs"></i>CBSITS (curated)</span>
+      </div>
+      <svg id="dumbbell" viewBox="0 0 1040 400" role="img" aria-label="Median F-measure confidence by taxonomic rank, EUKARYOME versus CBSITS"></svg>
+      <div class="chart-foot">Median F&#8209;measure confidence per rank, over every matched (rank, higher_rank, taxon) triple at that rank &mdash; not just the 33 rows selected for the detail table below.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-num">03</div>
+      <h2>33 taxa, EUKARYOME vs. CBSITS</h2>
+    </div>
+    <div class="prose" style="margin-bottom:20px;">
+      <p>The four best&#8209;sampled CBSITS taxa (by sequence count) at each nested
+      level&#8209;pair, plus the four whole&#8209;database rows &mdash; a fixed, reproducible
+      selection rule, not a hand&#8209;picked one. Full 206&#8209;row comparison saved to
+      <code>tests/CBSITS_eval/results/full_comparison.tsv</code>.</p>
+    </div>
+    <div class="table-wrap">
+      <table id="detail-table">
+        <thead>
+          <tr>
+            <th>Group</th>
+            <th class="num">EUK cut&#8209;off</th>
+            <th class="num">CBS cut&#8209;off</th>
+            <th class="num">EUK conf.</th>
+            <th class="num">CBS conf.</th>
+            <th class="num">&Delta; conf.</th>
+            <th class="num">CBS n</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-num">04</div>
+      <h2>Reading the result</h2>
+    </div>
+    <div class="verdict prose">
+      <p>The pattern holds up: swapping EUKARYOME&rsquo;s mixed&#8209;provenance sequences
+      for CBSITS&rsquo;s strain&#8209;vouchered ones, <b style="color:var(--ink)">within the
+      same clade</b>, lifts median confidence from 0.62 to 0.80 in 87% of matched taxa
+      &mdash; while at species level the cut&#8209;off value itself barely moves (median
+      shift 0.004 across 119 matched genera/families). At this rank, curation is fixing
+      <i>how cleanly</i> a threshold separates real groups, not <i>where</i> that threshold
+      sits. That stability fades going up the hierarchy: the median cut&#8209;off shift
+      grows to 0.03 at genus and 0.08 at family, where curation starts relocating the
+      threshold as well as sharpening it &mdash; consistent with metabarcoding noise
+      piling up disproportionately in the larger, more heterogeneous higher&#8209;rank
+      subtrees.</p>
+      <p>That is direct support for the working theory: a curated, voucher&#8209;only
+      subset of EUKARYOME (filtered by specimen type or by excluding
+      environmental/metabarcoding&#8209;only accessions) is a promising next step, and
+      this CBSITS comparison is a ready&#8209;made benchmark for checking whether that
+      filter actually moves confidence the way it should.</p>
+    </div>
+    <div class="callout">
+      <h3>Three reasons not to oversell this</h3>
+      <ul>
+        <li><b>The four &ldquo;global&rdquo; rows compare different universes, not just
+        different curation.</b> EUKARYOME&rsquo;s global rows are a random 20,000&#8209;sequence
+        sample across <i>every</i> kingdom in the database; CBSITS&rsquo;s global rows are
+        Fungi&#8209;only. Their gap reflects scope as much as noise &mdash; treat them as
+        context, not evidence.</li>
+        <li><b>Hypocreales is a real counter&#8209;example, and it's informative.</b>
+        Genus&#8209;within&#8209;<i>Hypocreales</i> confidence <i>drops</i> from 0.44 to 0.13 under
+        CBSITS &mdash; but CBSITS only captured 141 genera there against EUKARYOME&rsquo;s 314,
+        a much shallower, differently&#8209;shaped sample of the same order. A handful of
+        the 23 taxa (of 206) that got worse follow this same pattern: fewer, unevenly
+        sampled groups, not curation backfiring.</li>
+        <li><b>CBSITS can only validate what it contains.</b> It is entirely
+        filamentous&#8209;fungal, Ascomycota&#8209;heavy, lab&#8209;culturable taxa &mdash; no yeasts, no
+        non&#8209;fungal kingdoms, no obligate biotrophs or unculturable lineages. It's a
+        clean test of the noise hypothesis inside its own footprint, not proof the fix
+        generalises everywhere EUKARYOME's confidence is currently low.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    CBSITS source: Vu, D. <i>et al.</i> (2019). Large-scale generation and analysis of
+    filamentous fungal DNA barcodes boosts coverage for kingdom Fungi and reveals
+    thresholds for fungal species and higher taxon delimitation. <i>Studies in
+    Mycology</i>, 92, 135&ndash;154. PDF and source FASTA in <code>data/CBSITS/</code>.
+    &nbsp;&middot;&nbsp; Reformatting script: <code>tests/CBSITS_eval/prepare_cbsits.R</code>
+    &nbsp;&middot;&nbsp; Comparison script: <code>tests/CBSITS_eval/compare_cutoffs.R</code>
+    &nbsp;&middot;&nbsp; CBSITS predictions: <code>data/CBSITS_ITS2/cbsits.cutoffs.json.txt</code>
+  </footer>
+</div>
+
+<script>
+(function(){
+  // ---- rank-level medians (over ALL matched triples at that rank, n as noted) ----
+  var rankData = [
+    { label: "All matched taxa", n: 206, euk: 0.618, cbs: 0.796, emphasis: true },
+    { label: "species",          n: 119, euk: 0.663, cbs: 0.863 },
+    { label: "genus",            n: 65,  euk: 0.590, cbs: 0.733 },
+    { label: "family",           n: 16,  euk: 0.378, cbs: 0.741 },
+    { label: "order",            n: 4,   euk: 0.372, cbs: 0.479 },
+    { label: "class",            n: 2,   euk: 0.485, cbs: 0.671 }
+  ];
+
+  var css = getComputedStyle(document.documentElement);
+  var cEuk = css.getPropertyValue('--euk').trim() || '#C4632F';
+  var cCbs = css.getPropertyValue('--cbs').trim() || '#0A8B7C';
+  var cLine = css.getPropertyValue('--line').trim() || '#DDE2D6';
+  var cMuted = css.getPropertyValue('--muted').trim() || '#838C80';
+  var cInk = css.getPropertyValue('--ink').trim() || '#141814';
+  var cInk2 = css.getPropertyValue('--ink-2').trim() || '#4B564C';
+
+  var svg = document.getElementById('dumbbell');
+  var W = 1040, H = 400;
+  var padL = 150, padR = 60, padT = 14, padB = 34;
+  var plotW = W - padL - padR;
+  var rowH = (H - padT - padB) / rankData.length;
+  var x0 = 0, x1 = 1;
+  function xs(v){ return padL + (v - x0) / (x1 - x0) * plotW; }
+
+  var ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){
+    var e = document.createElementNS(ns, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // gridlines
+  [0, 0.25, 0.5, 0.75, 1].forEach(function(t){
+    var gx = xs(t);
+    svg.appendChild(el('line', { x1: gx, x2: gx, y1: padT, y2: H - padB, stroke: cLine, 'stroke-width': 1 }));
+    var lbl = el('text', { x: gx, y: H - padB + 18, fill: cMuted, 'font-size': 11, 'font-family': 'IBM Plex Mono, monospace', 'text-anchor': t === 1 ? 'end' : (t === 0 ? 'start' : 'middle') });
+    lbl.textContent = Math.round(t * 100) + '%';
+    svg.appendChild(lbl);
+  });
+
+  rankData.forEach(function(d, i){
+    var cy = padT + rowH * i + rowH / 2;
+    var rowGroup = el('g', {});
+
+    if (d.emphasis) {
+      rowGroup.appendChild(el('rect', { x: 0, y: cy - rowH/2 + 2, width: W, height: rowH - 4, fill: cLine, opacity: 0.35, rx: 6 }));
+    }
+
+    // row label
+    var label = el('text', { x: padL - 18, y: cy + 4, fill: d.emphasis ? cInk : cInk2, 'font-size': d.emphasis ? 13.5 : 13, 'font-weight': d.emphasis ? 700 : 400, 'text-anchor': 'end', 'font-family': 'Source Sans 3, sans-serif' });
+    label.textContent = d.label;
+    rowGroup.appendChild(label);
+
+    var nLabel = el('text', { x: padL - 18, y: cy + 17, fill: cMuted, 'font-size': 10.5, 'text-anchor': 'end', 'font-family': 'IBM Plex Mono, monospace' });
+    nLabel.textContent = 'n=' + d.n;
+    rowGroup.appendChild(nLabel);
+
+    var x_e = xs(d.euk), x_c = xs(d.cbs);
+
+    // connecting line
+    rowGroup.appendChild(el('line', { x1: x_e, x2: x_c, y1: cy, y2: cy, stroke: cMuted, 'stroke-width': 2, 'stroke-linecap': 'round', opacity: 0.55 }));
+
+    // dots
+    var rDot = d.emphasis ? 7 : 6;
+    rowGroup.appendChild(el('circle', { cx: x_e, cy: cy, r: rDot, fill: cEuk }));
+    rowGroup.appendChild(el('circle', { cx: x_c, cy: cy, r: rDot, fill: cCbs }));
+
+    // value labels
+    var goingRight = x_c > x_e;
+    var eukLabel = el('text', {
+      x: x_e, y: cy - rDot - 8, fill: cEuk, 'font-size': 11.5, 'font-weight': 600,
+      'text-anchor': goingRight ? 'end' : 'start', 'font-family': 'IBM Plex Mono, monospace'
+    });
+    eukLabel.textContent = d.euk.toFixed(2);
+    rowGroup.appendChild(eukLabel);
+
+    var cbsLabel = el('text', {
+      x: x_c, y: cy - rDot - 8, fill: cCbs, 'font-size': 11.5, 'font-weight': 700,
+      'text-anchor': goingRight ? 'start' : 'end', 'font-family': 'IBM Plex Mono, monospace'
+    });
+    cbsLabel.textContent = d.cbs.toFixed(2);
+    rowGroup.appendChild(cbsLabel);
+
+    var title = el('title', {});
+    title.textContent = d.label + ' (n=' + d.n + '): EUKARYOME ' + d.euk.toFixed(3) + ' → CBSITS ' + d.cbs.toFixed(3);
+    rowGroup.appendChild(title);
+
+    svg.appendChild(rowGroup);
+  });
+})();
+</script>
+
+<script>
+(function(){
+  var rows = [
+    ["group","species → genus"],
+    ["Penicillium",0.995,0.997,0.3047,0.5857,674,204,"seq"],
+    ["Aspergillus",0.998,0.998,0.4780,0.6275,524,196,"seq"],
+    ["Fusarium",0.997,0.997,0.4799,0.6284,320,100,"seq"],
+    ["Colletotrichum",0.995,0.997,0.3200,0.6666,298,72,"seq"],
+    ["group","species → family"],
+    ["Aspergillaceae",0.998,0.998,0.3453,0.6096,1267,427,"seq"],
+    ["Nectriaceae",0.998,0.995,0.5057,0.5622,720,312,"seq"],
+    ["Chaetomiaceae",0.997,0.997,0.5600,0.4750,457,167,"seq"],
+    ["Pleosporaceae",0.998,0.997,0.1352,0.7674,411,201,"seq"],
+    ["group","genus → family"],
+    ["Aspergillaceae",0.875,0.947,0.6378,0.6511,1267,15,"grp"],
+    ["Nectriaceae",0.951,0.940,0.4799,0.6498,747,43,"grp"],
+    ["Chaetomiaceae",0.986,0.975,0.4916,0.4587,457,34,"grp"],
+    ["Pleosporaceae",0.981,0.922,0.4116,0.7998,411,18,"grp"],
+    ["group","genus → order"],
+    ["Hypocreales",0.954,0.974,0.4403,0.1327,1733,141,"grp"],
+    ["Eurotiales",0.940,0.923,0.5402,0.5923,1575,35,"grp"],
+    ["Pleosporales",0.850,0.923,0.0452,0.5775,1220,150,"grp"],
+    ["Sordariales",0.985,0.990,0.4651,0.4779,681,63,"grp"],
+    ["group","family → order"],
+    ["Hypocreales",0.922,0.882,0.3937,0.4133,1557,13,"grp"],
+    ["Pleosporales",0.756,0.862,0.2099,0.8106,1177,40,"grp"],
+    ["Agaricales",0.930,0.798,0.3165,0.7949,537,26,"grp"],
+    ["Helotiales",0.901,0.869,0.4787,0.7556,434,26,"grp"],
+    ["group","family → class"],
+    ["Sordariomycetes",0.967,0.922,0.1986,0.2009,3759,101,"grp"],
+    ["Eurotiomycetes",0.910,0.840,0.5694,0.7743,2165,23,"grp"],
+    ["Dothideomycetes",0.756,0.862,0.1045,0.7685,2091,90,"grp"],
+    ["Agaricomycetes",0.924,0.827,0.2720,0.6180,1496,89,"grp"],
+    ["group","order → class"],
+    ["Sordariomycetes",0.901,0.871,0.3178,0.4075,3965,36,"grp"],
+    ["Dothideomycetes",0.750,0.738,0.4263,0.8300,2144,24,"grp"],
+    ["Agaricomycetes",0.753,0.784,0.4277,0.5496,1503,16,"grp"],
+    ["group","class → phylum"],
+    ["Ascomycota",0.821,0.802,0.3058,0.4516,9289,15,"grp"],
+    ["Basidiomycota",0.656,0.620,0.6640,0.8897,1650,10,"grp"],
+    ["group","whole database — scope differs, see caveats"],
+    ["species (global)",0.999,0.996,0.3759,0.2649,11614,5792,"grp"],
+    ["genus (global)",0.904,0.979,0.4055,0.2016,11653,1651,"grp"],
+    ["family (global)",0.861,0.979,0.1422,0.1903,11000,411,"grp"],
+    ["order (global)",0.766,0.979,0.0802,0.2114,11238,134,"grp"]
+  ];
+
+  var tbody = document.getElementById('table-body');
+  rows.forEach(function(r){
+    if (r[0] === "group") {
+      var tr = document.createElement('tr');
+      tr.className = 'group-row';
+      var td = document.createElement('td');
+      td.colSpan = 7;
+      td.textContent = r[1];
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    var name = r[0], euk_c = r[1], cbs_c = r[2], euk_f = r[3], cbs_f = r[4], n = r[5], grp = r[6], kind = r[7];
+    var diff = cbs_f - euk_f;
+    var tr = document.createElement('tr');
+
+    function td(html, cls){ var e = document.createElement('td'); if (cls) e.className = cls; e.innerHTML = html; return e; }
+
+    tr.appendChild(td(name, 'name'));
+    tr.appendChild(td(euk_c.toFixed(3), 'num'));
+    tr.appendChild(td(cbs_c.toFixed(3), 'num'));
+    tr.appendChild(td(euk_f.toFixed(3), 'num'));
+    tr.appendChild(td(cbs_f.toFixed(3), 'num'));
+    var arrow = diff >= 0 ? '↑' : '↓';
+    var cls = diff >= 0 ? 'up' : 'down';
+    tr.appendChild(td('<span class="delta ' + cls + '">' + arrow + ' ' + (diff >= 0 ? '+' : '') + diff.toFixed(3) + '</span>', 'num'));
+    var nText = kind === 'seq' ? (n + ' seq &middot; <span class="n-note">' + grp + ' spp</span>') : (n + ' seq &middot; <span class="n-note">' + grp + ' grp</span>');
+    tr.appendChild(td(nText, 'num'));
+    tbody.appendChild(tr);
+  });
+})();
+</script>
