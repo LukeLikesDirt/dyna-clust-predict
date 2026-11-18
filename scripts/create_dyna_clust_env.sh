@@ -8,7 +8,7 @@
 #
 # Create the dyna_clust_predict conda environment.
 # Must be submitted from the project root directory:
-#   sbatch env/create_dyna_clust_env.sh
+#   sbatch scripts/create_dyna_clust_env.sh
 
 ENV_FILE="environment.yml"
 ENV_NAME="dyna_clust_predict"

@@ -1,0 +1,5 @@
+combo	dataset	n	thresholds	max_abs_diff	cutoff_predict	cutoff_fast	f_predict	f_fast
+species:kng	Straminipila	1989	201	0	0.98	0.98	0.7111	0.7111
+species:cls	Insecta	1924	201	0	0.97	0.97	0.8838	0.8838
+species:fam	Agaricaceae	1848	201	0	0.995	0.995	0.7323	0.7323
+species:ord	Hymenochaetales	1820	201	0	0.985	0.985	0.7447	0.7447

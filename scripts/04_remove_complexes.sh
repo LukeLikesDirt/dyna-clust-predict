@@ -8,26 +8,15 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  04_remove_complexes.sh
-# Description:  For each ITS region, restrict to complete-span sequences
-#               (its_complete == TRUE, written by 03_extract_subregions.sh /
-#               R/append_completeness.R) and remove species-level complexes
-#               (species indistinguishable by the barcode marker) via
-#               R/remove_complexes.R's hub-guarded single-linkage clustering.
+# Description:  For each ITS region, keep complete sequences (its_complete,
+#               from 03) and remove species complexes: species the marker
+#               cannot tell apart (R/remove_complexes.R).
 #
-#               This is the gatekeeper for BOTH completeness and complex
-#               removal: --require_complete (default yes) drops incomplete
-#               rows from the output entirely, not just from complex-
-#               detection evidence, since truncated/stub records inflate
-#               similarity broadly (within-species too, not just cross-
-#               species matches used for complex detection).
-#
-#               Writes <region>/eukaryome_<region>_nocomplex.{fasta,
-#               classification} -- 05_prepare_subsets.sh and
-#               07a_predict_cutoffs.sh / 07c_predict_cutoffs_parallel.sh read
-#               these files, not the pre-complex-removal ones.
+#               Writes eukaryome_<region>_nocomplex.{fasta,classification},
+#               which 05 to 08 read.
 #
 # Note:         This script must be run from the project root directory,
-#               after 03_extract_subregions.sh and before 05_prepare_subsets.sh.
+#               after 03 and before 05.
 
 # =============================================================================
 # PARAMETER SETUP
@@ -36,17 +25,26 @@
 readonly REMOVE_COMPLEXES="./R/remove_complexes.R"
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
+# Similarity at which two species are merged into a complex.
 readonly THRESHOLD=1.0
-# vsearch identity definition, as in 07a/07c (terminal gaps count). The input
-# is dereplicated, so at THRESHOLD=1.0 IDDEF=1 finds no complexes (identical
-# sequences were already merged to their LCA by dereplicate_lca.R); IDDEF=2
-# finds species whose sequences are identical over their overlap, as before
-# 2026-11-10. See the note in R/remove_complexes.R. The project owner decided on
-# 2026-11-10 to keep IDDEF=1 here too (one definition throughout).
-readonly IDDEF=1
+# vsearch identity definition. 2 = terminal gaps excluded, so a sequence
+# contained in another scores 100%. Same as 06, 07a and 07c.
+readonly IDDEF=2
+# Minimum overlap (bp) for a pair to count; without it, sequences that share a
+# few bases score 100% under IDDEF=2. Set to the minimum sequence length (02:
+# 250 bp; 03: 50 bp). Same values as 06, 07a and 07c.
+declare -A MIN_OVERLAP
+MIN_OVERLAP["full_ITS"]=250
+MIN_OVERLAP["ITS1"]=50
+MIN_OVERLAP["ITS2"]=50
+# A sequence matching this many species or more is left out of complex
+# detection (likely mislabelled or contaminated).
 readonly MAX_HUB_SPECIES=3
+# Complex detection skips genera with fewer species than this.
 readonly MIN_SPECIES_PER_PARENT=2
+# Drop incomplete sequences (its_complete == FALSE) from the output.
 readonly REQUIRE_COMPLETE="yes"
+# Complex detection randomly downsamples larger genera to this many sequences.
 readonly MAX_SEQ_NO=20000
 readonly RUN_PARALLEL="yes"
 
@@ -126,6 +124,7 @@ for region in "${REGION_LABELS[@]}"; do
         --manifest_out            "${REGION_MANIFEST[$region]}" \
         --threshold              "$THRESHOLD" \
         --iddef                  "$IDDEF" \
+        --min_overlap            "${MIN_OVERLAP[$region]}" \
         --max_hub_species        "$MAX_HUB_SPECIES" \
         --min_species_per_parent "$MIN_SPECIES_PER_PARENT" \
         --require_complete       "$REQUIRE_COMPLETE" \

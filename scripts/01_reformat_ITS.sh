@@ -7,17 +7,16 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  01_reformat_ITS.sh
-# Description:  Download the EUKARYOME ITS v2.0 database, reformat sequence
-#               headers with reformat.R, extract the taxonomy classification
-#               table, and canonicalise it so every named taxon has exactly
-#               one parent (canonicalise_lineage.R).
+# Description:  Download EUKARYOME ITS v2.0, reformat headers and write the
+#               classification table (reformat.R), then give every taxon a
+#               single parent (canonicalise_lineage.R).
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================
 # PARAMETER SETUP
 # =============================================================================
 
-# EUKARYOME download URL (EUKARYOME General EUK ITS v2.0)
+# EUKARYOME General EUK ITS v2.0
 readonly EUKARYOME_URL="https://sisu.ut.ee/wp-content/uploads/sites/643/General_EUK_ITS_v2.0.zip"
 readonly DOWNLOAD_FILE="./tmp/General_EUK_ITS_v2.0.zip"
 readonly EXTRACTED_FASTA="./tmp/General_EUK_ITS_v2.0.fasta"
@@ -30,7 +29,7 @@ readonly OUT_CLASS="./tmp/eukaryome_ITS.classification"
 readonly REFORMAT="./R/reformat.R"
 readonly CANONICALISE="./R/canonicalise_lineage.R"
 
-# Labels that had more than one parent in EUKARYOME, and the parent chosen
+# Lists taxa that had more than one parent, and the parent assigned
 readonly LINEAGE_MANIFEST="./data/lineage_canonicalisation.txt"
 
 # =============================================================================
@@ -115,11 +114,9 @@ echo ""
 # =============================================================================
 # CANONICALISE THE LINEAGE
 # =============================================================================
-# EUKARYOME places some names under more than one parent (e.g. Cladosporiaceae
-# under Cladosporiales and Dothideales). Every named label is given its modal
-# identified parent, so the classification is a tree before dereplication, and
-# 08_consolidate_cutoffs.sh no longer has to guess a lineage ("inconsistent
-# parent ... modal parent used for lineage lookup").
+# Some taxa have more than one parent in EUKARYOME (e.g. Cladosporiaceae under
+# Cladosporiales and Dothideales). Each is assigned its most frequent named
+# parent.
 
 echo "=== CANONICALISING THE LINEAGE ==="
 echo "$(date)"

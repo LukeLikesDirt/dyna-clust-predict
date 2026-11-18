@@ -7,16 +7,12 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  06_compute_sim.sh
-# Description:  Optional pre-computation of pairwise vsearch similarity matrices
-#               for global predictions. Runs compute_sim.R for each rank's
-#               unique-sequence FASTA across all three ITS regions (full_ITS,
-#               ITS1, ITS2). Skips any rank whose .sim file already exists.
-#               The resulting .sim files can be passed to predict.R via --sim
-#               to avoid re-running vsearch during prediction.
+# Description:  Optional. Pre-compute pairwise vsearch similarity (.sim) files
+#               from each rank's unique-sequence IDs (05 STEP 1), for full_ITS,
+#               ITS1 and ITS2 (R/compute_sim.R). Ranks with an existing .sim
+#               file are skipped. Pass a .sim file to predict.R with --sim to
+#               skip vsearch there (07a and 07c do not).
 #
-#               Note: sim computation is O(N²) in sequence pairs. Lower ranks
-#               (species, genus) can take many hours; higher ranks complete
-#               faster. Comment out entries in TARGET_RANKS if not needed.
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================
@@ -25,9 +21,16 @@
 
 readonly SIM="./R/compute_sim.R"
 readonly TMP_DIR="./tmp"
-readonly MIN_SIM=0
-readonly IDDEF=1          # vsearch identity definition, as in 07a/07c (terminal gaps count)
+readonly MIN_SIM=0        # lowest similarity written to the .sim file
+readonly IDDEF=2          # vsearch identity definition (terminal gaps excluded); same as 04, 07a and 07c
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
+
+# Minimum overlap (bp) for a pair to be written; without it, sequences that
+# share a few bases score 100% under IDDEF=2. Same values as 04, 07a and 07c.
+declare -A MIN_OVERLAP
+MIN_OVERLAP["full_ITS"]=250
+MIN_OVERLAP["ITS1"]=50
+MIN_OVERLAP["ITS2"]=50
 
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 REGIONS=("full_ITS" "ITS1" "ITS2")
@@ -82,6 +85,7 @@ echo "$(date)"
 echo "Threads : $N_CPUS"
 echo "min_sim : $MIN_SIM"
 echo "iddef   : $IDDEF"
+echo "min_overlap (bp): full_ITS=${MIN_OVERLAP[full_ITS]} ITS1=${MIN_OVERLAP[ITS1]} ITS2=${MIN_OVERLAP[ITS2]}"
 echo ""
 
 for region in "${REGIONS[@]}"; do
@@ -128,13 +132,13 @@ for region in "${REGIONS[@]}"; do
             --out    "./data/${region}" \
             --min_sim "$MIN_SIM" \
             --iddef   "$IDDEF" \
+            --min_overlap "${MIN_OVERLAP[$region]}" \
             --n_cpus  "$N_CPUS"
 
         if [[ $? -ne 0 ]]; then
             echo "  WARNING: compute_sim.R failed for ${region}/${target}" >&2
         else
-            # Rename output to the rank-level convention if compute_sim.R named
-            # the file after the tmp FASTA basename rather than the sim_out name.
+            # compute_sim.R names its output after the tmp FASTA; rename it.
             local_sim="./data/${region}/${region}_${target}_unique.sim"
             if [[ -f "$local_sim" && "$local_sim" != "$sim_out" ]]; then
                 mv "$local_sim" "$sim_out"

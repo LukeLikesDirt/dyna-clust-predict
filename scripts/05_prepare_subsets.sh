@@ -7,15 +7,14 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  05_prepare_subsets.sh
-# Description:  Prepare prediction ID files for all three ITS regions (full ITS,
-#               ITS1, ITS2) by running subset.R once per region. Produces one
-#               ID file per unique-sequence rank (STEP 1) and one ID file per
-#               valid (target x parent) rank combination (STEP 2).
+# Description:  Write the sequence ID files that define each prediction
+#               dataset, for full ITS, ITS1 and ITS2 (R/subset.R):
+#               - STEP 1: <rank>_unique_id.txt, one per rank
+#               - STEP 2: <target>_pred_id_<parent>.txt, one per target x
+#                 parent rank combination, plus <target>_pred_id_global.txt
 #
-#               Reads each region's *_nocomplex.classification (written by
-#               04_remove_complexes.sh), not the pre-complex-removal file --
-#               run 04 before this script.
-# Note:         This script must be run from the project root directory.
+# Note:         This script must be run from the project root directory,
+#               after 04.
 
 # =============================================================================
 # PARAMETER SETUP
@@ -23,37 +22,24 @@
 
 readonly SUBSET="./R/subset.R"
 
-# Filter constants
+# Minimum number of child taxa per dataset.
 readonly MIN_SUBGROUPS=10
+# Minimum number of sequences per dataset.
 readonly MIN_SEQUENCES=30
+# Datasets larger than this are downsampled by randomly selecting whole child
+# taxa (e.g. whole species). Must not exceed predict.R's --max_seq_no (20,000).
 readonly MAX_SEQUENCES=20000
-readonly MAX_PROPORTION=0.5
+# Maximum proportion of sequences a child taxon may contribute to the parent
+# group.
+readonly MAX_PROPORTION=0.7
+# Maximum proportion of sequences a kingdom may contribute to global datasets.
 readonly MAX_KINGDOM_PROPORTION=0.5
-# Caps how many sequences any single SPECIES may contribute before the
-# max_sequences downsample (a no-op at every coarser target rank -- see
-# species_only() in R/subset.R). A species with many sequences and real
-# internal diversity can't all be pairwise-identical near threshold 1.0, so
-# it creates useful downward pressure on the optimal cutoff -- but only if
-# enough of its sequences survive to reveal that diversity, and a small
-# number of species are oversampled in EUKARYOME for non-biological reasons
-# (e.g. medically/agriculturally important fungi): 3.3% of Fungi species
-# carry 26% of all sequences. 10 keeps meaningful within-species signal
-# while bounding how much any one such species can dominate the
-# sequence-count-weighted F-measure.
+# Maximum sequences per species, applied before the MAX_SEQUENCES downsample.
+# Species datasets only.
 readonly MAX_SEQS_PER_GROUP=10
-# Caps the fraction of SPECIES (by count) that may be singletons (exactly 1
-# sequence) -- also species-target only. A singleton scores a free Dice =
-# 1.0 at threshold 1.0, pinning singleton-dominated datasets' cutoffs near
-# 1.0 by construction regardless of biology. 0.7 was chosen empirically on
-# kingdom Fungi (tests/CBSITS_eval/test_fungi_grid.R): combined with
-# MAX_SEQS_PER_GROUP=10, it lands the cutoff near 0.97, a conventional and
-# defensible value for fungal ITS, without discarding as much real data as
-# the tighter 0.5 cap tested earlier. Weaker self-predictions this pair
-# pushes toward 1.0 (e.g. a well-sampled genus that no longer needs
-# downsampling to demonstrate its own diversity) are expected to be rescued
-# by consolidate_cutoffs.R's confidence-ranked fallback to a higher-rank
-# ancestor, which carries far more multi-sequence evidence at production
-# scale and clears that guard easily.
+# Maximum proportion of singleton species a dataset may contain. A singleton
+# scores a free Dice = 1.0 at threshold 1.0, so a singleton-dominated dataset
+# has its optimum pinned near 1.0. Species datasets only.
 readonly MAX_SINGLETON_PROPORTION=0.7
 
 # =============================================================================

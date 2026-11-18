@@ -7,12 +7,11 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  07a_predict_cutoffs.sh
-# Description:  Predict similarity cutoffs for all three ITS regions (full_ITS,
-#               ITS1, ITS2) sequentially. Within each region, local predictions
-#               are run for every (target x parent) rank combination followed by
-#               global predictions (no higher rank). Sequence subset FASTA and
-#               classification files are built on-the-fly from each region's
-#               master FASTA to keep tmp/ lean.
+# Description:  Predict similarity cutoffs (R/predict.R) for full_ITS, ITS1 and
+#               ITS2 in turn. For each region, runs every target x parent rank
+#               combination (local), then each target rank with no parent
+#               (global). Each dataset's FASTA and classification are built in
+#               tmp/ from 05's ID files and deleted after use.
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================
@@ -22,34 +21,30 @@
 readonly PREDICT="./R/predict.R"
 readonly TMP_DIR="./tmp"
 readonly PREFIX="eukaryome"
+# Threshold sweep: START_THRESH (per rank, below) to END_THRESH in steps of STEP
 readonly STEP=0.001
 readonly END_THRESH=1
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 readonly RUN_PARALLEL="yes"
-# Min groups with >= 2 sequences required to report a cutoff. A group of size
-# 1 scores a free Dice = 1.0 at threshold 1.0, so datasets dominated by
-# singleton groups have their optimum pinned at 1.0 regardless of biology --
-# min_group_no alone does not catch this, since it counts groups of any size.
-# Matches min_group_no's own default of 10 (predict.R's own default is 0/off).
+# Minimum taxa with 2 or more sequences for a cutoff to be reported. A
+# singleton scores a free Dice = 1.0 at threshold 1.0, so a dataset with few
+# multi-sequence taxa has its optimum pinned near 1.0.
 readonly MIN_MULTISEQ_GROUPS=10
-# Rounds the reported cut-off to the nearest multiple of this value (the
-# confidence value is re-synced to the F-measure actually observed at the
-# rounded threshold, not the unrounded optimum -- see R/predict.R). Chosen
-# together with subset.R's MAX_SEQS_PER_GROUP/MAX_SINGLETON_PROPORTION
-# (tests/CBSITS_eval/test_fungi_grid.R): the combination lands kingdom
-# Fungi's species-level cutoff at a conventional, defensible ~0.97 rather
-# than reporting spurious precision like 0.9683.
+# Round the reported cutoff to the nearest multiple of this (0.979 -> 0.98).
+# The confidence is the F-measure at the rounded cutoff.
 readonly CUTOFF_ROUND_TO=0.005
-# vsearch identity definition: 1 = matching columns / alignment length with
-# terminal gaps included, and no coverage filter (decided 2026-11-10). The
-# references are full-length ITSx-extracted regions, so a length difference is
-# a real difference and two sequences that overlap by a few bases cannot score
-# high. This replaces --iddef 2 (terminal gaps ignored) plus a qcov/tcov >= 80%
-# gate (--min_cov, now removed from R/predict.R), which that definition needed
-# because a few overlapping bases could score 100%.
-readonly IDDEF=1
-# Recompute F-measures instead of reusing those cached in <prefix>.predicted,
-# which otherwise stay frozen when the input sequences or IDDEF change.
+# vsearch identity definition. 2 = terminal gaps excluded, so a shorter
+# sequence is scored only over its overlap with the longer one. Same as 04
+# and 06.
+readonly IDDEF=2
+# Minimum overlap (bp) for a pair to count; without it, sequences that share a
+# few bases score 100% under IDDEF=2. Same values as 04 and 06.
+declare -A MIN_OVERLAP
+MIN_OVERLAP["full_ITS"]=250
+MIN_OVERLAP["ITS1"]=50
+MIN_OVERLAP["ITS2"]=50
+# Recompute F-measures instead of reusing those cached in <prefix>.predicted;
+# the cache is not refreshed when inputs or settings change.
 readonly REDO="yes"
 
 # Start thresholds per target rank
@@ -82,27 +77,22 @@ RANK_ABBR["genus"]="gen"
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 REGIONS=("full_ITS" "ITS1" "ITS2")
 
-# FASTA path per region (post-completeness-filter, post-complex-removal --
-# written by 04_remove_complexes.sh)
+# Input FASTA per region (from 04)
 declare -A REGION_FASTA
 REGION_FASTA["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.fasta"
 REGION_FASTA["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.fasta"
 REGION_FASTA["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.fasta"
 
-# Classification path per region (post-completeness-filter, post-complex-
-# removal -- written by 04_remove_complexes.sh)
+# Input classification per region (from 04)
 declare -A REGION_CLASS
 REGION_CLASS["full_ITS"]="./data/full_ITS/eukaryome_ITS_nocomplex.classification"
 REGION_CLASS["ITS1"]="./data/ITS1/eukaryome_ITS1_nocomplex.classification"
 REGION_CLASS["ITS2"]="./data/ITS2/eukaryome_ITS2_nocomplex.classification"
 
 # report_floor_hits <raw_cutoffs_file>
-# Lists datasets whose reported cut-off sits at the bottom of the sweep
-# (<= START_THRESH + 0.005 for its rank): their F optimum may lie lower. More
-# likely under --iddef 1, which scores pairs lower than --iddef 2 did (on the
-# old --iddef 2 table: 12 species, 37 genus, 15 family and 3 order datasets
-# within 0.01 of their start). Reported, never changed: lowering START_THRESH
-# also moves the middle of a tied F range, so it is a decision, not a fix.
+# Lists datasets whose cutoff is within 0.005 of START_THRESH; their optimum
+# may lie below the sweep. Reports only: lowering START_THRESH can also move
+# cutoffs where F is tied across a range, so it is a judgement call.
 report_floor_hits() {
     local raw="$1"
     [[ -f "$raw" ]] || return 0
@@ -137,8 +127,7 @@ mkdir -p "$TMP_DIR"
 
 # subset_fasta_and_classification <id_file> <global_fasta> <global_class>
 #                                 <out_fasta> <out_class>
-# Subsets a global FASTA and classification table to only the IDs listed in
-# id_file. Uses seqkit for FASTA filtering and a two-pass awk for the TSV.
+# Subsets the region's FASTA and classification to the IDs in id_file.
 subset_fasta_and_classification() {
     local id_file="$1"
     local global_fasta="$2"
@@ -151,16 +140,14 @@ subset_fasta_and_classification() {
         return 1
     fi
 
-    # Filter FASTA by ID list using seqkit grep.
-    # -f reads IDs from a file (one per line); output preserves full headers.
+    # Keep sequences whose ID is in id_file
     seqkit grep -f "$id_file" "$global_fasta" > "$out_fasta"
 
     local n_seqs
     n_seqs=$(grep -c "^>" "$out_fasta")
     echo "  Wrote ${n_seqs} sequences to ${out_fasta}"
 
-    # Filter classification TSV: retain the header row plus any row whose
-    # first field (sequence ID) appears in the ID file (two-pass awk).
+    # Keep the header row and rows whose ID is in id_file
     awk 'NR == FNR { ids[$1] = 1; next }
          FNR == 1  { print; next }
          $1 in ids { print }' "$id_file" "$global_class" > "$out_class"
@@ -232,7 +219,7 @@ for region in "${REGIONS[@]}"; do
             tmp_fasta="$TMP_DIR/${target}_pred_${parent_abbr}.fasta"
             tmp_class="$TMP_DIR/${target}_pred_${parent_abbr}.classification"
 
-            # Skip if the ID file was not produced (no groups passed filters)
+            # No ID file: no dataset passed 05's filters
             if [[ ! -f "$id_file" ]]; then
                 echo "  Skipping ${target} within ${parent}: ID file not found ($id_file)"
                 continue
@@ -256,6 +243,7 @@ for region in "${REGIONS[@]}"; do
                 --step           "$STEP" \
                 --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
                 --iddef          "$IDDEF" \
+                --min_overlap    "${MIN_OVERLAP[$region]}" \
                 --redo           "$REDO" \
                 --cutoff_round_to "$CUTOFF_ROUND_TO" \
                 --prefix         "$PREFIX" \
@@ -330,6 +318,7 @@ for region in "${REGIONS[@]}"; do
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
             --iddef          "$IDDEF" \
+            --min_overlap    "${MIN_OVERLAP[$region]}" \
             --redo           "$REDO" \
             --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
@@ -385,7 +374,7 @@ if [[ ${#FAILED_STEPS[@]} -gt 0 ]]; then
     echo "Likely cause: OS OOM (out-of-memory) killer terminated worker processes."
     echo "Possible fixes:"
     echo "  1. Request more memory in SLURM (#SBATCH --mem=...)."
-    echo "  2. Reduce --max_seq_no (currently ${max_seq_no:-25000}) to lower per-dataset memory."
+    echo "  2. Lower MAX_SEQUENCES in 05_prepare_subsets.sh and re-run it."
     echo "  3. Reduce --n_cpus to run fewer parallel workers."
 else
     echo "=== PIPELINE COMPLETED SUCCESSFULLY ==="

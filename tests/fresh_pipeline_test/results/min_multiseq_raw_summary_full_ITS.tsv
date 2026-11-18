@@ -1,0 +1,10 @@
+combo	datasets	withheld	withheld_multiseq_0	withheld_multiseq_1_9	reported_median_cutoff	withheld_median_cutoff	reported_median_F	withheld_median_F	reported_pct_F1	withheld_pct_F1	withheld_median_singleton_pct
+family:ord	37	8	0	8	0.78	0.76	0.7961	0.87675	0	0	41.45
+genus:fam	280	78	0	78	0.915	0.89	0.72725	0.80525	0	0	40
+species:cls	85	10	2	8	0.965	0.935	0.8657	0.952	0	20	58.35
+species:fam	523	136	42	94	0.985	0.9875	0.8045	0.93035	0.3	30.9	66.7
+species:gen	895	409	216	193	0.985	0.995	0.7876	1	0.2	51.3	100
+species:kng	10	2	0	2	0.98	0.8625	0.8444	0.9278	0	0	52.7
+species:ord	246	41	8	33	0.98	0.975	0.8478	0.9152	0	22	66.7
+species:phy	33	5	0	5	0.965	0.865	0.8619	0.9559	0	0	40
+species:global	1	0	0	0	0.985		0.8215		0		

@@ -1,0 +1,30 @@
+rank	higher_rank	cell	cells	changed	filled_only_gate_off	median_diff_changed	q10_diff_changed	q90_diff_changed	max_abs_diff	gate_off_self_wins	gate_off_self_wins_F1
+class	kingdom	own value reported (or none computed)	10	0	0				-Inf	0	0
+class	phylum	own value reported (or none computed)	33	0	0				-Inf	0	0
+family	class	own value reported (or none computed)	85	0	0				-Inf	0	0
+family	kingdom	own value reported (or none computed)	10	0	0				-Inf	0	0
+family	order	own value reported (or none computed)	240	0	0				0	29	0
+family	order	own value withheld by gate	8	0	8				-Inf	8	0
+family	phylum	own value reported (or none computed)	33	0	0				-Inf	0	0
+genus	class	own value reported (or none computed)	85	0	0				-Inf	0	0
+genus	family	own value reported (or none computed)	510	0	0				0	202	0
+genus	family	own value withheld by gate	78	0	78				-Inf	78	0
+genus	kingdom	own value reported (or none computed)	10	0	0				-Inf	0	0
+genus	order	own value reported (or none computed)	248	0	0				-Inf	0	0
+genus	phylum	own value reported (or none computed)	33	0	0				-Inf	0	0
+order	class	own value reported (or none computed)	85	0	0				-Inf	0	0
+order	kingdom	own value reported (or none computed)	10	0	0				-Inf	0	0
+order	phylum	own value reported (or none computed)	33	0	0				-Inf	0	0
+phylum	kingdom	own value reported (or none computed)	10	0	0				-Inf	0	0
+species	class	own value reported (or none computed)	75	0	0				0	43	0
+species	class	own value withheld by gate	10	8	0	-0.0525	-0.1215	0.016	0.125	7	2
+species	family	own value reported (or none computed)	452	4	0	-0.0025	-0.01	0.005	0.01	172	1
+species	family	own value withheld by gate	136	95	0	0.005	-0.048	0.0210000000000001	0.12	96	42
+species	genus	own value reported (or none computed)	486	0	0				0	193	1
+species	genus	own value withheld by gate	409	293	0	0.01	-0.019	0.03	0.165	306	210
+species	kingdom	own value reported (or none computed)	8	0	0				0	8	0
+species	kingdom	own value withheld by gate	2	2	0	-0.1225	-0.1325	-0.1125	0.135	2	0
+species	order	own value reported (or none computed)	207	0	0				0	114	0
+species	order	own value withheld by gate	41	32	0	-0.0075	-0.1025	0.0295	0.155	30	9
+species	phylum	own value reported (or none computed)	28	0	0				0	19	0
+species	phylum	own value withheld by gate	5	4	0	-0.1	-0.1305	-0.038	0.135	4	0

@@ -1,0 +1,5 @@
+dataset	n	n_spp	n_multiseq	pct_singleton	max_prop	edges_ge_start	cutoff_raw	cutoff	f_at_cutoff	f_at_1	elapsed_sec
+Fungi@kng	20000	8430	4198	50.2	5e-04	1049401	0.979	0.98	0.7829	0.6212	23163
+Viridiplantae@kng	7132	4766	1573	67	0.0014	109597	0.991	0.99	0.8515	0.7801	396
+Metazoa@kng	6836	4269	1409	67	0.0015	30093	0.968	0.97	0.836	0.7239	626
+global	20000	10858	3562	67.2	5e-04	512774	0.986	0.985	0.8215	0.697	2856

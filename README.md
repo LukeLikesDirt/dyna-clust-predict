@@ -13,18 +13,17 @@ across taxonomic ranks using a curated ITS reference database
 
 The pipeline:
 
--   Extracts ITS1 and ITS2 subregions using ITSx
--   Computes global pairwise similarity using vsearch (`--iddef 1`: terminal
-    gaps count, no coverage filter; see [Similarity definition](#similarity-definition))
--   Optimises similarity cut-offs using F-measure
--   Supports parallel processing for efficient large-scale analyses
+- Extracts ITS1 and ITS2 subregions using ITSx
+- Computes global pairwise similarity using vsearch
+- Optimises similarity cut-offs using F-measure
+- Supports parallel processing for efficient large-scale analyses
 
 The workflow is conceptually adapted from
 [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder), but:
 
--   Uses **vsearch** for global alignment
--   Supports scalable parallel computation
--   Integrates similarity prediction within an R-based workflow
+- Uses **vsearch** for global alignment
+- Supports scalable parallel computation
+- Integrates similarity prediction within an R-based workflow
 
 ## Pipeline steps
 
@@ -35,10 +34,10 @@ The workflow is conceptually adapted from
   `scripts/02_derep_and_clean.sh`      Length-filter, standardise infraspecific
                                        annotations, and LCA-dereplicate
 
-  `scripts/03_extract_subregions.sh`   Extract ITS1 and ITS2 using ITSx;
-                                       annotate completeness (`its_complete`)
+ `scripts/03_extract_subregions.sh`   Extract ITS1 and ITS2 using ITSx
 
-  `scripts/04_remove_complexes.sh`     Restrict to complete-span sequences and
+ `scripts/04_remove_complexes.sh`     Restrict to complete-span sequences and
+
                                        remove species-level complexes
 
   `scripts/05_prepare_subsets.sh`      Generate balanced prediction subsets
@@ -85,7 +84,7 @@ All scripts must be run from the **project root directory**.
   `R/consolidate_cutoffs.R` Fill gaps and repair monotonicity via a
                             confidence-ranked fallback chain (self ->
                             ancestor taxa -> eukaryome-wide global)
-  
+
 ## Directory structure
 
     data/
@@ -107,7 +106,7 @@ A conda environment specification is provided in `environment.yml`.
 
 ### Local installation
 
-``` bash
+```bash
 mamba env create -f environment.yml
 conda activate dyna_clust_predict
 ```
@@ -116,7 +115,7 @@ conda activate dyna_clust_predict
 
 Run from the project root:
 
-``` bash
+```bash
 sbatch scripts/create_dyna_clust_env.sh
 conda activate dyna_clust_predict
 ```
@@ -125,7 +124,7 @@ conda activate dyna_clust_predict
 
 From the project root:
 
-``` bash
+```bash
 sbatch scripts/01_reformat_ITS.sh
 sbatch scripts/02_derep_and_clean.sh
 sbatch scripts/03_extract_subregions.sh
@@ -151,424 +150,109 @@ sbatch scripts/08_consolidate_cutoffs.sh           # Fill gaps, repair monotonic
 
 # Key parameters
 
-## Taxonomy reformatting
+Production values, set at the top of each script. The R scripts take the same
+settings as flags (e.g. `MIN_OVERLAP` → `--min_overlap`); run
+`Rscript R/<script>.R --help` for every option.
 
-Used in: `reformat.R` (via `01_reformat_ITS.sh`)
+## 01 Reformat
 
-Numbered Tedersoo et al. (2024, MycoKeys 107) placeholder codes (e.g.
-`Densosporales.fam02`, `Glomeraceae.gen05`) are preserved as usable
-taxonomic groups rather than discarded, with `.` converted to `_` so the
-labels survive downstream taxonomy-string parsing.
+No tunable parameters. Genus names shared across kingdoms get a `(Kingdom)`
+suffix (`data/homonym_manifest.txt`). Taxa with more than one parent get their
+most frequent parent (`data/lineage_canonicalisation.txt`).
 
-Genus names that collide across more than one identified kingdom (e.g. a
-plant genus and an unrelated animal genus sharing the same name) are
-disambiguated by appending `(Kingdom)`, matching the convention EUKARYOME's
-own curators already use for some known homonyms (e.g. `Achlya(Metazoa)` vs
-`Achlya(Straminipila)`) — so pipeline-generated and upstream-supplied
-disambiguation are indistinguishable downstream. Disambiguation happens
-before species-name construction, so the species binomial inherits the
-suffix automatically. Every resolved collision is written to a manifest so
-a future EUKARYOME release that adds or drops a homonym shows up as a
-reviewable diff rather than a silent rename.
+## 02 Clean and dereplicate
 
-    --manifest_out  FILE  Output path for the homonym manifest [default: data/homonym_manifest.txt]
+| Parameter | Value | What it does |
+|---|---|---|
+| `MIN_LENGTH` | 250 | Minimum sequence length (bp) |
+| `MAX_LENGTH` | 1500 | Maximum sequence length (bp) |
+| `EXCLUDE_AMBIGUOUS` | TRUE | Drop sequences with ambiguous bases |
 
-Manifest columns: `original_genus`, `kingdom`, `n_sequences`,
-`disambiguated_genus`.
+## 03 Extract subregions
 
-### Lineage canonicalisation
+| Parameter | Value | What it does |
+|---|---|---|
+| `MIN_SUBREGION_LENGTH` | 50 | Minimum ITS1 and ITS2 length (bp) for a sequence to count as complete |
 
-Used in: `canonicalise_lineage.R` (via `01_reformat_ITS.sh`, straight after
-`reformat.R`)
+## 04 Remove complexes
 
-EUKARYOME is not a strict tree: some names sit under more than one parent
-(in ITS2, 76 labels: 52 genera, 12 families, 6 orders, 6 classes; e.g.
-*Cladosporiaceae* under Cladosporiales for 564 records and Dothideales for
-344, *Candida* under 6 families, *Triscelophorus* under two spellings of its
-family). Left alone, `consolidate_cutoffs.R` warns that such names "have an
-inconsistent parent ... across the classification file" and walks their
-ancestors by the modal parent, and `dereplicate_lca.R` truncates the LCA of
-identical sequences at the conflicting rank.
+| Parameter | Value | What it does |
+|---|---|---|
+| `THRESHOLD` | 1.0 | Similarity at which two species form a complex |
+| `IDDEF` | 2 | vsearch identity definition: terminal gaps excluded |
+| `MIN_OVERLAP` | 250 / 50 / 50 | Minimum overlap (bp) for a pair to count: full ITS / ITS1 / ITS2 |
+| `MAX_HUB_SPECIES` | 3 | Ignore sequences that match this many species or more |
+| `MIN_SPECIES_PER_PARENT` | 2 | Skip genera with fewer species |
+| `REQUIRE_COMPLETE` | yes | Keep only complete sequences |
+| `MAX_SEQ_NO` | 20,000 | Downsample larger genera during detection |
 
-Each named label is therefore given one parent before anything else uses the
-classification: its modal parent among identified parents, or among incertae
-sedis parents if it has no identified one (an identified parent beats an
-incertae one however few records carry it, and fills a parent that is missing
-in some records); ties go to the alphabetically first. The vote is taken on
-the original table at every rank and applied bottom-up, so a record's lineage
-becomes the chain of chosen parents above its finest named label. Records
-under a marker kingdom (`_mitochondrion`, `_pseudogene`, ...) neither vote nor
-change. The run stops if a record would move to another kingdom (a
-cross-kingdom homonym that needs a `(Kingdom)` suffix) or if a label still has
-two parents. The rule is the same as in the ITS2 clustering pipeline that
-consumes these files, so that pipeline's own pass finds nothing left to change.
+Each complex is reduced to its best-sampled species
+(`data/<region>/complex_manifest.txt`).
 
-    --classification_in   FILE  Classification from reformat.R [required]
-    --classification_out  FILE  Output (may be the input path) [required]
-    --manifest_out        FILE  Labels that had more than one parent [default: data/lineage_canonicalisation.txt]
+## 05 Prepare subsets
 
-Manifest columns: `rank`, `child`, `chosen_parent`, `n_parents`, `n_records`,
-`n_records_changed`, `parents` (each parent with its record count).
+| Parameter | Value | What it does |
+|---|---|---|
+| `MIN_SUBGROUPS` | 10 | Minimum child taxa per dataset |
+| `MIN_SEQUENCES` | 30 | Minimum sequences per dataset |
+| `MAX_SEQUENCES` | 20,000 | Downsample larger datasets by whole child taxa, never by single sequences |
+| `MAX_PROPORTION` | 0.7 | Maximum share of a dataset from one child taxon |
+| `MAX_KINGDOM_PROPORTION` | 0.5 | Maximum share of a global dataset from one kingdom |
+| `MAX_SEQS_PER_GROUP` | 10 | Maximum sequences per species (species datasets only) |
+| `MAX_SINGLETON_PROPORTION` | 0.7 | Maximum share of singleton species (species datasets only) |
 
-## Completeness annotation
+A singleton scores a free Dice = 1.0 at threshold 1.0, so singleton-heavy
+datasets have their cutoff pinned near 1.0. Whole-taxon sampling and the
+singleton cap limit this.
 
-Used in: `append_completeness.R` (via `03_extract_subregions.sh`)
+## 06 Compute similarity (optional)
 
-Flags each ID `its_complete = TRUE` iff its raw (pre-dereplication) ITS1 and
-ITS2 extractions both exist and are each at least `--min_length` bp.
-"Present in both ITS1/ITS2 outputs" alone is not sufficient — it only
-confirms ITSx assigned *some* label, not that the label represents a
-genuine, non-truncated region.
+| Parameter | Value | What it does |
+|---|---|---|
+| `MIN_SIM` | 0 | Lowest similarity written to the `.sim` file |
+| `IDDEF`, `MIN_OVERLAP` | as 04 | |
 
-    --min_length  INT  Minimum length (bp) for each subregion [default: 50]
+## 07 Predict cutoffs
 
-## Complex removal
+| Parameter | Value | What it does |
+|---|---|---|
+| `START_THRESH` | 0.8 species, 0.7 genus, 0.6 family, 0.5 higher | First threshold of the sweep |
+| `END_THRESH` | 1 | Last threshold of the sweep |
+| `STEP` | 0.001 | Sweep step |
+| `MIN_MULTISEQ_GROUPS` | 10 | Minimum taxa with 2+ sequences to report a cutoff |
+| `CUTOFF_ROUND_TO` | 0.005 | Round the reported cutoff to this step |
+| `IDDEF`, `MIN_OVERLAP` | as 04 | |
+| `REDO` | yes | Recompute instead of reusing cached results |
 
-Used in: `remove_complexes.R` (via `04_remove_complexes.sh`)
+Writes to `data/<region>/`: `eukaryome.predicted` (F-measure at every
+threshold) and `eukaryome_raw_cutoffs.txt` (best cutoff per dataset, with its
+F-measure as `confidence`).
 
-Detects species that cannot be discriminated by the barcode marker
-(single-linkage clustering at `--threshold` identity, within each
-`--parent_rank` taxon) and removes all but the best-sampled species per
-complex. `--require_complete` (default `yes`) restricts to `its_complete`
-rows first and drops incomplete rows from the output entirely — truncated
-records inflate similarity broadly, not just for complex detection.
+## 08 Consolidate cutoffs
 
-Not a parity port of dnabarcoder's `-removecomplexes`: that algorithm's
-unguarded single-linkage merge is fragile to database contamination — one
-mislabelled record can transitively chain unrelated, well-separated species
-into a false mega-complex. `--max_hub_species` excludes any sequence whose
-threshold-identity matches span at least that many distinct species from the
-complex graph before clustering, guarding against exactly this.
-
-    --rank                   STR    Rank at which complexes are detected [default: species]
-    --parent_rank             STR    Rank within which complexes are detected [default: genus]
-    --threshold               FLOAT  Identity threshold defining a complex edge [default: 1.0]
-    --max_hub_species         INT    Exclude a sequence from complex detection if its matches
-                                     span >= this many distinct species [default: 3]
-    --min_species_per_parent  INT    Skip parent groups with fewer distinct species [default: 2]
-    --require_complete        yes/no Restrict to its_complete rows; drop the rest [default: yes]
-    --max_seq_no              INT    Max sequences per parent group; excess is randomly
-                                     downsampled [default: 20000]
-    --iddef                   0-4    vsearch pairwise identity definition [default: 1]
-
-With `--iddef 1` and `--threshold 1.0`, complex removal finds nothing: the
-input is dereplicated (every sequence is a distinct string), and under
-`--iddef 1` only identical sequences reach 100%, which `dereplicate_lca.R` has
-already merged to their LCA. Tested on ITS2 in eight large genera
-(*Aspergillus*, *Penicillium*, *Fusarium*, *Cladosporium*, *Trichoderma*,
-*Alternaria*, *Russula*, *Inocybe*): 0 cross-species pairs at 100% under
-`--iddef 1`, against 108-2,806 per genus under `--iddef 2`, all between
-sequences of different lengths (one contained in the other). Run with
-`--iddef 2` (set `IDDEF=2` in `04_remove_complexes.sh`) to detect complexes as
-before 2026-11-10. Production keeps `--iddef 1` for this step too (project owner's
-decision, 2026-11-10): one similarity definition throughout.
-
-Example:
-
-``` bash
-Rscript R/remove_complexes.R \
-  --fasta_in data/full_ITS/eukaryome_ITS.fasta \
-  --classification_in data/full_ITS/eukaryome_ITS.classification \
-  --fasta_out data/full_ITS/eukaryome_ITS_nocomplex.fasta \
-  --classification_out data/full_ITS/eukaryome_ITS_nocomplex.classification \
-  --manifest_out data/full_ITS/complex_manifest.txt \
-  --threshold 1.0 \
-  --max_hub_species 3 \
-  --n_cpus 32
-```
-
-## Sequence selection
-
-Used in: `subset.R` (via `05_prepare_subsets.sh`)
-
-These parameters control taxonomic balance and sampling constraints
-prior to similarity prediction.
-
-    --min_subgroups   INT    Minimum unique child taxa per parent taxon (default: 10)
-    --min_sequences   INT    Minimum sequences per parent taxon after proportion cap (default: 30)
-    --max_sequences   INT    Maximum sequences per parent taxon; excess are balanced round-robin downsampled across child taxa (default: 25000)
-    --max_proportion  FLOAT  Maximum fraction a child taxon may represent (default: 0.5)
-    --max_kingdom_proportion  FLOAT  Maximum fraction of the STEP 2 global pool that the
-                                     dominant kingdom may represent (default: 0.5). Independent
-                                     of --max_proportion, which caps the target rank's own
-                                     dominant clade -- inert for global pools since no single
-                                     target-rank clade dominates, unlike kingdom composition.
-    --max_seqs_per_group  INT   Max sequences any single species may contribute (default:
-                                 0/off; production runs use 10). Applied only when
-                                 target_rank == species -- a no-op at every coarser rank, where
-                                 groups are naturally few and legitimately need deep sequence
-                                 support. Species over the cap are thinned, never dropped. A
-                                 species with many sequences and real internal diversity can't
-                                 all be pairwise-identical near threshold 1.0, so it fragments
-                                 there, creating useful downward pressure on the optimal
-                                 cutoff -- but only if enough of its sequences survive to
-                                 reveal that diversity, and a small number of species are
-                                 oversampled in EUKARYOME for non-biological reasons (3.3% of
-                                 Fungi species carry 26% of all sequences).
-    --max_singleton_proportion  FLOAT  Max fraction of species (by count, not sequence count)
-                                       that may be singletons (default: 1/off; production runs
-                                       use 0.7). Applied only when target_rank == species, for
-                                       the same reason as --max_seqs_per_group above. A
-                                       singleton scores a free Dice = 1.0 at threshold 1.0, so
-                                       datasets dominated by singleton species have their
-                                       optimum pinned near 1.0 regardless of biology; excess
-                                       singleton species are randomly dropped (never
-                                       multi-sequence ones) to bring the fraction under the cap.
-
-Both caps replace the previous row-level random downsample (Filter 4, and the
-equivalent step in `global_prediction_filter`) with a group-aware downsample
-that keeps a species' sequences together or drops it entirely -- a row-level
-downsample silently fragments large species back down to one surviving
-sequence once the sampling fraction is steep, manufacturing apparent
-singletons that undo both caps above (confirmed on kingdom Fungi: raw pool is
-50.3% singleton by species, but naive row-level downsampling from 118,171 to
-5,000 sequences came out 89.0% singleton, with 76% of those "singleton"
-species actually having >= 2 sequences in the real data).
-
-Example:
-
-``` bash
-Rscript R/subset.R \
-  --fasta_in input.fasta \
-  --classification_in input.classification \
-  --min_subgroups 10 \
-  --min_sequences 30 \
-  --max_sequences 25000 \
-  --max_proportion 0.5 \
-  --max_seqs_per_group 10 \
-  --max_singleton_proportion 0.7 \
-  --output_dir output
-```
-
-## Similarity prediction
-
-Used in: `predict.R` (via `07a_predict_cutoffs.sh` / `07c_predict_cutoffs_parallel.sh`)
-
-These parameters select the rank combination to predict:
-
-    --rank          STR    Target rank(s), comma-separated (e.g. species,genus) [required]
-    --higher_rank   STR    Parent rank(s) for local prediction, comma-separated (e.g. genus,family).
-                           Omit to run a single global prediction across all sequences. [default: ""]
-
-These parameters control the similarity sweep:
-
-    --start_threshold   FLOAT   Starting similarity threshold (default: 0.0)
-    --end_threshold     FLOAT   Ending similarity threshold (default: 1.0)
-    --step              FLOAT   Threshold step size (default: 0.001)
-    --min_cutoff        FLOAT   Min cutoff value to report in output (default: 0.0)
-
-The same filtering thresholds used during sequence selection (`subset.R`) also apply here, but as
-strict dataset filters rather than balancing rules — datasets that fail a threshold are
-skipped entirely rather than downsampled:
-
-    --min_group_no    INT    Min unique child taxa required to report a cutoff (default: 10)
-    --min_seq_no      INT    Min sequences required to report a cutoff (default: 30)
-    --max_seq_no      INT    Max sequences per dataset; excess is randomly sampled (default: 25000)
-    --max_proportion  FLOAT  Skip datasets where the dominant group exceeds this fraction (default: 1.0)
-    --min_multiseq_groups INT  Min groups with >= 2 sequences required to report a cutoff
-                               (default: 0/off; production runs use 10). A group of size 1
-                               scores a free Dice = 1.0 at threshold 1.0, so datasets
-                               dominated by singleton groups have their optimum pinned at
-                               1.0 regardless of biology -- min_group_no alone does not
-                               catch this, since it counts groups of any size.
-
-Threshold-selection controls:
-
-    --tie_tolerance  FLOAT  Widens the tied-optimum-threshold selection from exact F-measure
-                            equality to fmeasures >= best_f - tie_tolerance, still picking
-                            the middle of the tied range (default: 0/off). Not used in
-                            production -- exact-equality tie-breaking plus
-                            --cutoff_round_to's coarser reporting grid was judged simpler,
-                            without a meaningful accuracy tradeoff.
-    --iddef          0-4    vsearch pairwise identity definition (default: 1, matching
-                            columns / alignment length with terminal gaps included; no
-                            coverage filter). Applies only to similarities computed by the
-                            run, not to a loaded .sim file (compute_sim.R takes the same
-                            option). See Similarity definition below.
-    --cutoff_round_to  FLOAT  Round the reported cut-off to the nearest multiple of this
-                              value (default: 0/off; production runs use 0.005). The
-                              confidence value is re-synced to the F-measure actually
-                              observed at the rounded threshold, not the unrounded optimum,
-                              so it always describes the reported cut-off. Combined with
-                              subset.R's --max_seqs_per_group/--max_singleton_proportion,
-                              chosen so kingdom Fungi's species-level cutoff lands at a
-                              conventional, defensible ~0.97 rather than reporting spurious
-                              precision like 0.9683.
-
-Execution controls:
-
-    --run_parallel   yes/no   Parallel dataset processing via furrr/future (default: yes)
-    --n_cpus         INT      Workers (parallel) or vsearch threads (sequential) (default: all−1)
-    --tmp_dir        DIR      Directory for temporary vsearch output (default: ./tmp)
-    --redo           yes/no   Recompute F-measures instead of reusing those cached in
-                              <prefix>.predicted, and ignore a <prefix>.sim left at the default
-                              path by an earlier run (default: no; production runs use yes).
-
-> **Re-running:** without `--redo yes`, F-measures already in `<prefix>.predicted`
-> are reused even if the sequences or `--iddef` have changed, so `sequence
-> number` updates while `cut-off` and `confidence` do not. `--redo yes` overwrites
-> only the datasets in the current run, so entries for datasets no longer produced
-> stay in the raw table. For a clean re-prediction, move the old outputs aside
-> first:
->
-> ``` bash
-> mkdir -p data/ITS2/pre_iddef1
-> mv data/ITS2/eukaryome.predicted data/ITS2/eukaryome_raw_cutoffs.* data/ITS2/pre_iddef1/
-> rm -f data/ITS2/eukaryome.sim
-> ```
-
-Example:
-
-``` bash
-Rscript R/predict.R \
-  --input data/full_ITS/eukaryome_ITS_nocomplex.fasta \
-  --classification data/full_ITS/eukaryome_ITS_nocomplex.classification \
-  --rank species \
-  --higher_rank genus \
-  --start_threshold 0.9 \
-  --end_threshold 1.0 \
-  --step 0.001 \
-  --min_multiseq_groups 10 \
-  --iddef 1 \
-  --redo yes \
-  --cutoff_round_to 0.005 \
-  --run_parallel yes \
-  --n_cpus 80 \
-  --out data/full_ITS \
-  --prefix eukaryome_ITS
-```
-
-Writes three files to `--out` (e.g. for `--prefix eukaryome`):
-
-    eukaryome.predicted            Full F-measure traces per threshold (JSON)
-    eukaryome_raw_cutoffs.json     Best cutoff per dataset, this run only (JSON)
-    eukaryome_raw_cutoffs.txt      Same, tab-delimited
-
-"Raw" because each row is one dataset's direct computation only, with gaps
-wherever `subset.R`'s filters excluded a parent taxon. The pipeline's actual
-deliverable is `consolidate_cutoffs.R`'s gap-filled, monotonicity-repaired
-`eukaryome_cutoffs.txt` (next section) -- a different file, not this one.
+No tunable parameters. Takes each cutoff from the dataset or one of its
+ancestors, whichever has the highest confidence (the global value only as a
+last resort), then raises cutoffs so they never decrease from coarse to fine
+ranks. Writes
+`output/<region>/eukaryome_cutoffs.txt`; `source` shows where each value came
+from and `clamped` marks raised values.
 
 ## Similarity definition
 
-Every vsearch call in the pipeline (`compute_sim.R`, `predict.R`,
-`remove_complexes.R`) uses `--iddef 1`: identity = matching columns /
-alignment length, **terminal gaps included**, with **no coverage filter**
-(`--query_cov`/`--target_cov`, or the former `--min_cov`). Decided 2026-11-10.
-The references are either trimmed to the same primers or ITSx-extracted
-full-length (non-partial) regions, so a length difference between two
-sequences is a real difference and is scored as one; the few terminal bases
-of ITSx boundary noise are not a concern at the identities that decide a
-cut-off. Two sequences that overlap by only a few bases cannot score high, so
-no coverage filter is needed.
+Steps 04, 06 and 07 all use `IDDEF=2` and the same `MIN_OVERLAP`. Cutoffs are
+only valid when sequences are compared with the same settings.
 
-This replaces `--iddef 2` (terminal gaps ignored) plus a `qcov >= 80 and
-tcov >= 80` gate (`--min_cov 80`, commit `6394548`, now removed). Under
-`--iddef 2`, two unrelated sequences whose ends overlap by a few bases score
-100%, and single linkage chains broad datasets into giant components, which is
-what the gate was for (`tests/test_iddef.R` builds that case). Cut-offs
-predicted under one definition are not valid under the other: re-predict from
-step 01, and use `--iddef 1` with no coverage filter wherever the cut-offs are
-applied.
+## Tests
 
-## Cutoff consolidation
-
-Used in: `consolidate_cutoffs.R` (via `08_consolidate_cutoffs.sh`)
-
-`predict.R`'s nested cutoff table has one row per `(higher_rank, dataset,
-rank)`, but a cell only exists where that dataset's subset passed
-`subset.R`'s filters -- so some parent taxa are missing values at some
-target ranks, and independently-computed ranks can occasionally violate the
-constraint that similarity must increase from phylum to species (each rank
-nests inside the one above it).
-
-`consolidate_cutoffs.R` resolves every `(higher_rank, dataset, target rank)`
-cell that has at least one direct computation somewhere in its lineage by
-comparing all available candidates -- the dataset's own value and each
-ancestor taxon's value at the same target rank (walking the real taxonomic
-lineage derived from the classification file) -- and keeping whichever has
-the highest confidence (F-measure), **excluding non-self candidates that
-bring less multi-sequence evidence than self** (see `--min_multiseq_groups`:
-a candidate with few groups of >= 2 sequences can still report an
-artificially high, singleton-driven confidence, so it is not allowed to
-override a self value backed by more real evidence merely on confidence).
-The eukaryome-wide **global** value is a true last resort, used only when
-self and every ancestor produced nothing at all -- it never competes on
-confidence, because it pools every kingdom together and isn't a like-for-like
-estimate for any one taxon (a marginally higher confidence there just
-reflects a much larger, unrelated pool, not a better answer). It then clamps
-each dataset's own resolved row to be non-decreasing from its coarsest to its
-finest target rank; a row raised by that clamp has its `confidence` nulled
-out, since nothing was actually measured at the raised threshold.
-
-    --cutoffs_in         FILE   <prefix>_raw_cutoffs.txt for one region -- predict.R's raw,
-                                pre-consolidation output [required]
-    --classification_in  FILE   Region classification file, for lineage lookup only [required]
-    --output             FILE   Output path for the consolidated table [required]
-
-Requires the region's global (no `--higher_rank`) predictions to have
-already been run via `07a`/`07c`, since the global cutoffs are the
-gap-filler of last resort.
-
-Output columns extend `predict.R`'s own (`rank`, `higher_rank`, `dataset`,
-`cut-off`, `confidence`, `sequence number`, `group number`, `multiseq group
-number`, `max proportion`) with:
-
-    source                What supplied the winning value: self / <rank>:<name> / global
-    clamped                TRUE if the monotonicity step raised this value (confidence is
-                           then NA -- nothing was measured at the raised cutoff)
-    original_cutoff        self's own direct value, if one existed (regardless of whether
-                           self won -- NA if this taxon had no direct computation at all)
-    original_confidence    Its confidence, if one existed
-
-Example:
-
-``` bash
-Rscript R/consolidate_cutoffs.R \
-  --cutoffs_in data/full_ITS/eukaryome_raw_cutoffs.txt \
-  --classification_in data/full_ITS/eukaryome_ITS_nocomplex.classification \
-  --output output/full_ITS/eukaryome_cutoffs.txt
-```
+`tests/fresh_pipeline_test/fresh_test.R` runs steps 05 and 07 on real data with
+the values set in the scripts. It writes only to `--work`.
 
 ## Cross-repo harmonisation
 
-This is one of three sibling repos sharing a common R pipeline core:
-`dyna-clust-predict` (this repo, the general eukaryote database),
-`dyna-clust-predict-am` (AM/Glomeromycota-focused), and
-`dyna-clust-predict-ecm` (ectomycorrhizal). They share `R/utils.R`,
-`predict.R`, `reformat.R`, `compute_sim.R`, `dereplicate_lca.R`,
-`consolidate_cutoffs.R`, and `remove_complexes.R` verbatim; AM has
-intentionally diverged on `subset.R` and `check_annotations.R` for its own
-sampling and correction logic. Note that only files listed in
-`tools/sync_manifest.tsv` sync — `scripts/*.sh` (including the numbered
-pipeline steps and where each new flag/parameter is wired in with its
-production default) never syncs, so a sibling repo's own pipeline scripts
-must be updated by hand to pick up any change made only at the shell-script
-level here.
-
-`tools/sync_manifest.tsv` declares which shared files sync to which
-sibling. On every push to `main` touching a manifest-listed path,
-[.github/workflows/sync-to-siblings.yml](.github/workflows/sync-to-siblings.yml)
-opens a pull request in each applicable sibling with the updated file(s) —
-never a direct push, since a change correct for the general pipeline can
-still be wrong for a dataset-specific subset. Requires a `SIBLING_REPOS_PAT`
-repository secret (a PAT with write access to both sibling repos); nothing
-propagates until that secret exists.
-
-To check for drift locally (e.g. from the HPC, without waiting on CI):
-
-```bash
-tools/check_drift.sh          # both siblings
-tools/check_drift.sh am       # just dyna-clust-predict-am
-```
-
-Sync direction is one-way (main → siblings). A fix that originates in a
-sibling is a manual PR into main, not something the workflow handles.
-
-`dyna-clust-predict-ecm` has an unrelated git root commit (it was created by
-copying files rather than forking), so `git merge`/`pull` from main will
-never work there directly — the sync workflow applies file content
-directly rather than merging, so this is a non-issue in practice.
+`dyna-clust-predict-am` and `dyna-clust-predict-ecm` share this repo's core R
+files. Files listed in `tools/sync_manifest.tsv` are sent to them as pull
+requests on every push to `main` (needs the `SIBLING_REPOS_PAT` secret). Shell
+scripts never sync. Check for drift with `tools/check_drift.sh`.
 
 ## Citation
 

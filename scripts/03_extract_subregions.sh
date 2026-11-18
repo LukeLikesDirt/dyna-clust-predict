@@ -7,9 +7,9 @@
 #SBATCH --output=logs/%x.%j.out
 
 # Script name:  03_extract_subregions.sh
-# Description:  Extract ITS1 and ITS2 subregions from the full ITS FASTA using
-#               ITSx. Filters the classification table to retain only sequences
-#               present in each extracted subregion.
+# Description:  Extract ITS1 and ITS2 from the full ITS FASTA with ITSx,
+#               dereplicate each subregion, and flag sequences with both
+#               subregions present (its_complete).
 # Note:         This script must be run from the project root directory.
 
 # =============================================================================
@@ -23,6 +23,7 @@ readonly PREFIX="eukaryome_ITS"
 
 readonly DEREP_LCA="./R/dereplicate_lca.R"
 readonly APPEND_COMPLETENESS="./R/append_completeness.R"
+# Minimum ITS1 and ITS2 length (bp) for a sequence to count as complete
 readonly MIN_SUBREGION_LENGTH=50
 
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
@@ -106,12 +107,12 @@ filter_classification() {
     local global_class="$2"
     local out_class="$3"
 
-    # Extract sequence IDs from FASTA headers, stripping the leading '>'
+    # Sequence IDs from the FASTA headers
     local id_tmp
     id_tmp=$(mktemp)
     grep "^>" "$fasta" | sed 's/^>//' | awk '{print $1}' > "$id_tmp"
 
-    # Retain header row plus any classification row whose first field matches
+    # Keep the header row and rows whose ID is in the FASTA
     awk 'NR == FNR { ids[$1] = 1; next }
          FNR == 1  { print; next }
          $1 in ids { print }' "$id_tmp" "$global_class" > "$out_class"
@@ -202,13 +203,9 @@ echo ""
 # =============================================================================
 # ITS COMPLETENESS
 # =============================================================================
-# its_complete = ID's raw ITS1 AND ITS2 extractions (pre-dereplication) both
-# exist and are >= MIN_SUBREGION_LENGTH bp. Computed from the raw ITSx FASTAs
-# rather than from ITSx's own positions.txt for robustness -- length is read
-# directly rather than parsed from ITSx's text report. Since dereplicate_lca.R
-# groups by exact sequence identity per subregion, every ID collapsed into one
-# representative shares that representative's length, so joining onto the
-# already-dereplicated classification files by ID is safe.
+# its_complete is TRUE when both ITS1 and ITS2 were extracted and each is at
+# least MIN_SUBREGION_LENGTH bp. Lengths come from the raw ITSx FASTAs, before
+# dereplication.
 
 if [[ -f "$ITS1_RAW" && -f "$ITS2_RAW" ]]; then
     echo "=== APPENDING ITS COMPLETENESS ==="
@@ -250,12 +247,8 @@ echo ""
 # =============================================================================
 # CLEANUP
 # =============================================================================
-# Retain positions.txt as a persisted audit artifact (per-record SSU/ITS1/
-# 5.8S/ITS2/LSU boundary calls) before removing the rest of ITSx's scratch
-# output. Previously this step was a no-op: ITSx writes to ./tmp/ but cleanup
-# removed a stray ./.tmp/ that mkdir created and nothing else ever touched, so
-# every ITSx artifact silently accumulated in ./tmp/ until the next
-# 02_derep_and_clean.sh run wiped it.
+# Keep ITSx's positions.txt (SSU/ITS1/5.8S/ITS2/LSU boundaries per sequence)
+# and delete the rest of its output.
 
 echo "=== CLEANUP ==="
 

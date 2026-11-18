@@ -1,8 +1,7 @@
 #!/bin/bash
 # Script name:  07b_launch_parallel.sh
-# Description:  Submit one SLURM job per ITS region (full_ITS, ITS1, ITS2),
-#               each with 32 cores, running in parallel instead of sequentially.
-#               Launches 07c_predict_cutoffs_parallel.sh once per region.
+# Description:  Submit 07c_predict_cutoffs_parallel.sh as one SLURM job per ITS
+#               region (full_ITS, ITS1, ITS2), so the regions run in parallel.
 #
 # Usage:        bash scripts/07b_launch_parallel.sh
 # Note:         Must be run from the project root directory.

@@ -1,0 +1,6 @@
+multiseq	datasets	median_cutoff	median_F	pct_F1	median_singleton_pct
+0	268	1	1	96.3	100
+1-4	9	0.94	0.8429	11.1	66.7
+5-9	412	0.965	0.83535	1	50
+10-19	710	0.97	0.8207	0.3	42.1
+20+	711	0.98	0.7769	0	47.3

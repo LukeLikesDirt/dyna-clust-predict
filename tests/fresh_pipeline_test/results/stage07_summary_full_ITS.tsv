@@ -1,0 +1,9 @@
+combo	datasets	reported	dropped_by_multiseq_gate	median_cutoff	q10	q90	pct_at_or_above_0.995
+species:gen	895	486	409	0.985	0.95	0.995	25.5
+species:fam	523	387	136	0.985	0.95	0.995	23
+species:ord	246	205	41	0.98	0.912	0.995	15.6
+species:cls	85	75	10	0.965	0.892	0.99	6.7
+species:phy	33	28	5	0.965	0.896	0.985	3.6
+species:kng	7	5	2	0.98	0.907	0.98	0
+genus:fam	280	202	78	0.915	0.815	0.965	0.5
+family:ord	37	29	8	0.78	0.658	0.887	0

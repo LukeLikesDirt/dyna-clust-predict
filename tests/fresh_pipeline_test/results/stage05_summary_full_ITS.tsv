@@ -1,0 +1,8 @@
+parent_rank	chunks	chunks_pool_over_cap	chunks_no_multiseq_species	chunks_lt10_multiseq	seq_pool	seq_sample
+gen	896	275	216	409	99065	83232
+fam	527	133	42	136	156022	104619
+ord	259	89	8	41	182040	113539
+cls	93	26	2	10	190367	103569
+phy	37	11	0	5	191718	60596
+kng	10	2	0	2	192544	37920
+global	1	1	0	0	192662	20000

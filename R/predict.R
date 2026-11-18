@@ -7,12 +7,15 @@
 # Uses vsearch --allpairs_global (global alignment) for similarity computation.
 # A pre-computed .sim file may be supplied via --sim to skip that step.
 #
-# Similarity is vsearch --iddef 1 (matching columns / alignment length, terminal
-# gaps included) with no coverage filter. The references are full-length,
-# ITSx-extracted regions, so a length difference is a real difference and is
-# scored as one, and two sequences that overlap by only a few bases cannot
-# score high. Under --iddef 2 (terminal gaps ignored) they could score 100%,
-# which is why an earlier version needed a coverage gate (qcov and tcov >= 80%).
+# Similarity is vsearch --iddef 2 (matching columns / alignment length with
+# terminal gaps excluded), so a sequence contained in another scores on the
+# bases they share. Two sequences that share only a few bases would score 100%
+# on those bases and single linkage would chain unrelated species together, so
+# --min_overlap (bp) drops every pair whose alignment, terminal gaps excluded,
+# is shorter than that (vsearch --mincols). The pipeline scripts set it per
+# region: 50 bp for ITS1 and ITS2, 250 bp for full ITS, roughly the shortest
+# real fragment of each. This replaces both the earlier fractional coverage gate
+# (--min_cov, qcov and tcov >= 80%) and the --iddef 1 default of 2026-11-10.
 #
 # Supports both sequential and parallel (furrr/future) dataset processing,
 # controlled by --run_parallel (default: yes).
@@ -112,7 +115,12 @@ option_list <- list(
               help = "Min sequences required to report a cutoff [default: %default]"),
   make_option("--max_seq_no",
               type = "integer", default = 20000L, metavar = "INT",
-              help = "Max sequences per dataset; excess is randomly sampled [default: %default]"),
+              help = paste("Max sequences per dataset; excess is randomly sampled by sequence,",
+                           "which cuts multi-sequence species down to one survivor each and",
+                           "inflates the singleton rate (kingdom Fungi: 50% -> 89%). Size",
+                           "datasets with subset.R, which downsamples whole species, and keep",
+                           "this at or above its --max_sequences so it never triggers.",
+                           "[default: %default]")),
   make_option("--max_proportion",
               type = "double", default = 1.0, metavar = "NUM",
               help = paste("Skip datasets where the dominant group exceeds this proportion",
@@ -131,12 +139,21 @@ option_list <- list(
                            "Default 0 (off) preserves existing behaviour.",
                            "[default: %default]")),
   make_option("--iddef",
-              type = "integer", default = 1L, metavar = "0-4",
+              type = "integer", default = 2L, metavar = "0-4",
               help = paste("vsearch --iddef pairwise identity definition.",
-                           "Default 1: matching columns / alignment length, terminal",
-                           "gaps included, so a length difference counts against",
-                           "identity and a short overlap cannot score high. No",
-                           "coverage filter is applied. [default: %default]")),
+                           "Default 2: matching columns / alignment length with terminal",
+                           "gaps excluded, so a sequence contained in another scores on",
+                           "the bases they share. Pair it with --min_overlap, or two",
+                           "sequences sharing a few bases can score 100%.",
+                           "[default: %default]")),
+  make_option("--min_overlap",
+              type = "integer", default = 0L, metavar = "BP",
+              help = paste("Ignore pairs whose alignment, terminal gaps excluded, is",
+                           "shorter than this many bp (vsearch --mincols). Under --iddef 2",
+                           "two sequences sharing only a few bases score 100%, and single",
+                           "linkage then chains them together. Applies only to similarities",
+                           "computed by this run, not to a loaded .sim file.",
+                           "Default 0 (off). [default: %default]")),
   make_option("--tie_tolerance",
               type = "double", default = 0, metavar = "NUM",
               help = paste("Widen the tied-optimum-threshold selection from exact",
@@ -198,6 +215,9 @@ if (!file.exists(opt$input))      stop("FASTA file not found: ", opt$input)
 if (opt$rank == "")               stop("--rank is required (e.g. --rank species).")
 if (nchar(opt$classification) == 0) stop("--classification is required.")
 if (is.na(opt$iddef) || !opt$iddef %in% 0:4) stop("--iddef must be 0, 1, 2, 3 or 4.")
+if (is.na(opt$min_overlap) || opt$min_overlap < 0) {
+  stop("--min_overlap must be a non-negative number of bp (0 disables it).")
+}
 
 # ── Assign parameters to short names ─────────────────────────────────────────
 
@@ -218,6 +238,7 @@ max_prop_limit  <- opt$max_proportion
 min_cutoff      <- opt$min_cutoff
 min_multiseq_groups <- opt$min_multiseq_groups
 iddef           <- opt$iddef
+min_overlap     <- opt$min_overlap
 tie_tolerance   <- opt$tie_tolerance
 cutoff_round_to <- opt$cutoff_round_to
 id_col          <- opt$id_col
@@ -306,28 +327,45 @@ load_sim <- function(sim_file) {
 # tmp_dir is used so workers writing concurrent subset FASTAs do not collide
 # with any files in the main output directory.
 
-compute_sim <- function(fasta_file, n_threads, tmp_dir, iddef = 1L) {
+#
+# min_overlap > 0 drops pairs whose alignment, terminal gaps excluded, is
+# shorter than that many bp. vsearch's --acceptall switches off every accept/
+# reject criterion, --mincols included, so the filter accepts any identity
+# (--id 0) instead. A rejected pair is simply absent from vsearch's output, so
+# the node set comes from the FASTA: a sequence whose every pair is rejected
+# stays in the matrix as a self-only node rather than disappearing from it,
+# and a run in which every pair is rejected (an empty output file) is not an
+# error. With min_overlap = 0 the call and the result are as before.
+
+compute_sim <- function(fasta_file, n_threads, tmp_dir, iddef = 2L, min_overlap = 0L) {
   if (!dir.exists(tmp_dir)) dir.create(tmp_dir, recursive = TRUE)
   vsearch_out <- file.path(tmp_dir, paste0(basename(fasta_file), ".vsearch.txt"))
 
+  gated  <- min_overlap > 0
+  accept <- if (gated) sprintf("--id 0 --mincols %d", as.integer(min_overlap)) else "--acceptall"
   vsearch_cmd <- sprintf(
-    "vsearch --allpairs_global '%s' --acceptall --userout '%s' --userfields query+target+id --iddef %d --threads %d",
-    fasta_file, vsearch_out, iddef, n_threads
+    "vsearch --allpairs_global '%s' %s --userout '%s' --userfields query+target+id --iddef %d --threads %d",
+    fasta_file, accept, vsearch_out, iddef, n_threads
   )
   if (system(vsearch_cmd, ignore.stdout = TRUE, ignore.stderr = TRUE) != 0) {
     stop("vsearch failed for: ", fasta_file)
   }
-  if (!file.exists(vsearch_out) || file.info(vsearch_out)$size == 0) {
+  no_hits <- !file.exists(vsearch_out) || file.info(vsearch_out)$size == 0
+  if (no_hits && !gated) {
     stop("vsearch produced no output for: ", fasta_file)
   }
 
   # Parse: query <tab> target <tab> percent_identity
-  b <- fread(vsearch_out, sep = "\t", header = FALSE,
-             col.names = c("qid", "sid", "pident"),
-             colClasses = c("character", "character", "numeric"))
+  b <- if (no_hits) {
+    data.table(qid = character(0), sid = character(0), pident = numeric(0))
+  } else {
+    fread(vsearch_out, sep = "\t", header = FALSE,
+          col.names = c("qid", "sid", "pident"),
+          colClasses = c("character", "character", "numeric"))
+  }
   b[, score := round(pident / 100, 4)]
 
-  all_ids <- unique(c(b$qid, b$sid))
+  all_ids <- if (gated) load_fasta_ids(fasta_file)$ids else unique(c(b$qid, b$sid))
   sim_dt  <- rbindlist(list(
     data.table(i = b$qid,   j = b$sid,   score = b$score),
     data.table(i = b$sid,   j = b$qid,   score = b$score),
@@ -673,7 +711,8 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
                             sim_dt, fasta_file, output_dir,
                             start_t, end_t, step_t, redo, existing,
                             max_prop_limit, vsearch_threads, tmp_dir,
-                            iddef = 1L, tie_tolerance = 0, cutoff_round_to = 0) {
+                            iddef = 2L, tie_tolerance = 0, cutoff_round_to = 0,
+                            min_overlap = 0L) {
   classes  <- load_classes(ds_ids, cls_df, rank, id_col)
   n_seqs   <- length(ds_ids)
   n_groups <- length(classes)
@@ -702,7 +741,7 @@ process_dataset <- function(dataset_name, ds_ids, cls_df, rank, id_col,
     tmp_fasta <- file.path(tmp_dir,
                            paste0(gsub("[^A-Za-z0-9_]", "_", dataset_name), "_subset.fasta"))
     write_subset_fasta(fasta_file, ds_ids, tmp_fasta)
-    working_sim <- compute_sim(tmp_fasta, vsearch_threads, tmp_dir, iddef)
+    working_sim <- compute_sim(tmp_fasta, vsearch_threads, tmp_dir, iddef, min_overlap)
     unlink(tmp_fasta)
   }
 
@@ -837,8 +876,12 @@ use_saved_sim <- file.exists(sim_file_path) && (nchar(sim_file_arg) > 0 || !redo
 
 if (use_saved_sim) {
   cat("[predict] NOTE: similarities are read from", sim_file_path,
-      "\n[predict]   --iddef does not apply to a loaded matrix; it must have been computed with",
-      sprintf("--iddef %d (R/compute_sim.R).\n", iddef))
+      "\n[predict]   --iddef and --min_overlap do not apply to a loaded matrix; it must have been",
+      sprintf("computed with --iddef %d --min_overlap %d (R/compute_sim.R).\n", iddef, min_overlap))
+}
+if (iddef %in% c(2L, 4L) && min_overlap == 0L) {
+  cat("[predict] NOTE: --iddef", iddef, "ignores terminal gaps and --min_overlap is 0, so two",
+      "sequences that share only a few bases can score 100%.\n")
 }
 if (!redo && length(prediction_dict) > 0) {
   cat("[predict] WARNING: without --redo yes, F-measures cached in", prediction_file,
@@ -852,7 +895,7 @@ if (end_t >= start_t && end_t > 0) {
     # Global prediction: compute similarity once for all sequences
     if (length(seq_ids) <= max_seq_no) {
       cat("[predict] No .sim file found. Computing similarity with vsearch...\n")
-      sim_dt <- compute_sim(fasta_file, n_cpus, tmp_dir, iddef)
+      sim_dt <- compute_sim(fasta_file, n_cpus, tmp_dir, iddef, min_overlap)
       save_sim(sim_dt, sim_file_path)
       cat("[predict] Similarity matrix saved to:", sim_file_path, "\n")
     } else {
@@ -1017,7 +1060,8 @@ for (rank in rank_list) {
           tmp_dir         = tmp_dir,
           iddef           = iddef,
           tie_tolerance   = tie_tolerance,
-          cutoff_round_to = cutoff_round_to
+          cutoff_round_to = cutoff_round_to,
+          min_overlap     = min_overlap
         ),
         error = function(e) {
           list(

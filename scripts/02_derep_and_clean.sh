@@ -11,9 +11,9 @@
 #               1. Filter sequences by length (length_filter.R)
 #               2. Standardise infraspecific annotations (check_annotations.R)
 #               3. Dereplicate identical sequences with LCA taxonomy (dereplicate_lca.R)
+# Note:         Re-check check_annotations.R for each EUKARYOME release; the
+#               annotation format may change.
 # Note:         This script must be run from the project root directory.
-# Note:         check_annotations.R needs to be validated for each update of
-#               EUKARYOME, as the annotation format may change.
 
 # =============================================================================
 # PARAMETER SETUP
@@ -32,9 +32,10 @@ readonly LENGTH_FILTER="./R/length_filter.R"
 readonly CHECK_ANNOT="./R/check_annotations.R"
 readonly DEREP_LCA="./R/dereplicate_lca.R"
 
+# Sequence length limits (bp)
 readonly MIN_LENGTH=250
 readonly MAX_LENGTH=1500
-readonly EXCLUDE_AMBIGUOUS=TRUE  # set to FALSE to keep sequences with ambiguous nucleotides
+readonly EXCLUDE_AMBIGUOUS=TRUE  # FALSE keeps sequences with ambiguous nucleotides
 
 mkdir -p ./data/full_ITS ./tmp
 
