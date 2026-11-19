@@ -29,3 +29,5 @@ R/check_annotations.R	no	yes
 tests/consolidate_cutoffs/run_test.R	yes	yes
 tests/reformat/run_test.R	yes	yes
 tests/test_load_classification_quoting.R	yes	yes
+tests/test_iddef.R	yes	yes
+tests/test_min_overlap.R	yes	yes
