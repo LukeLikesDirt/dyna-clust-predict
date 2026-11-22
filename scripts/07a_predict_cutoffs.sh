@@ -33,12 +33,10 @@ readonly MIN_MULTISEQ_GROUPS=10
 # Round the reported cutoff to the nearest multiple of this (0.979 -> 0.98).
 # The confidence is the F-measure at the rounded cutoff.
 readonly CUTOFF_ROUND_TO=0.005
-# vsearch identity definition. 2 = terminal gaps excluded, so a shorter
-# sequence is scored only over its overlap with the longer one. Same as 04
-# and 06.
-readonly IDDEF=2
-# Minimum overlap (bp) for a pair to count; without it, sequences that share a
-# few bases score 100% under IDDEF=2. Same values as 04 and 06.
+# vsearch identity definition. 1 = terminal gaps count, so a sequence that
+# covers only part of another scores below 100%. Same as 04 and 06.
+readonly IDDEF=1
+# Minimum overlap (bp) for a pair to count. Same values as 04 and 06.
 declare -A MIN_OVERLAP
 MIN_OVERLAP["full_ITS"]=250
 MIN_OVERLAP["ITS1"]=50

@@ -179,7 +179,7 @@ most frequent parent (`data/lineage_canonicalisation.txt`).
 | Parameter | Value | What it does |
 |---|---|---|
 | `THRESHOLD` | 1.0 | Similarity at which two species form a complex |
-| `IDDEF` | 2 | vsearch identity definition: terminal gaps excluded |
+| `IDDEF` | 1 | vsearch identity definition: terminal gaps count |
 | `MIN_OVERLAP` | 250 / 50 / 50 | Minimum overlap (bp) for a pair to count: full ITS / ITS1 / ITS2 |
 | `MAX_HUB_SPECIES` | 3 | Ignore sequences that match this many species or more |
 | `MIN_SPECIES_PER_PARENT` | 2 | Skip genera with fewer species |
@@ -239,8 +239,9 @@ from and `clamped` marks raised values.
 
 ## Similarity definition
 
-Steps 04, 06 and 07 all use `IDDEF=2` and the same `MIN_OVERLAP`. Cutoffs are
-only valid when sequences are compared with the same settings.
+Steps 04, 06 and 07 all use `IDDEF=1` and the same `MIN_OVERLAP`. Cutoffs are
+only valid when sequences are compared with the same settings. This branch
+(`iddef1`) differs from `main` only in `IDDEF`: `main` uses `IDDEF=2`.
 
 ## Tests
 

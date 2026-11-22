@@ -20,14 +20,14 @@ check <- function(desc, ok) {
 
 # ── The shell scripts carry the same per-region values ────────────────────────
 # 04, 06, 07a and 07c each declare their own MIN_OVERLAP, so a change to one
-# must be made in all four. IDDEF must be 2 in each, and each must pass the
+# must be made in all four. IDDEF must be 1 in each, and each must pass the
 # overlap to its R script.
 
 for (sc in c("scripts/04_remove_complexes.sh", "scripts/06_compute_sim.sh",
              "scripts/07a_predict_cutoffs.sh", "scripts/07c_predict_cutoffs_parallel.sh")) {
   lines <- readLines(sc)
   name  <- basename(sc)
-  check(sprintf("%s: IDDEF=2", name), any(lines == "readonly IDDEF=2" | grepl("^readonly IDDEF=2( |$)", lines)))
+  check(sprintf("%s: IDDEF=1", name), any(lines == "readonly IDDEF=1" | grepl("^readonly IDDEF=1( |$)", lines)))
   check(sprintf("%s: MIN_OVERLAP full_ITS=250, ITS1=50, ITS2=50", name),
         any(lines == 'MIN_OVERLAP["full_ITS"]=250') && any(lines == 'MIN_OVERLAP["ITS1"]=50') &&
         any(lines == 'MIN_OVERLAP["ITS2"]=50'))

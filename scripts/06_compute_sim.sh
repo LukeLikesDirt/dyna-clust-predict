@@ -22,11 +22,10 @@
 readonly SIM="./R/compute_sim.R"
 readonly TMP_DIR="./tmp"
 readonly MIN_SIM=0        # lowest similarity written to the .sim file
-readonly IDDEF=2          # vsearch identity definition (terminal gaps excluded); same as 04, 07a and 07c
+readonly IDDEF=1          # vsearch identity definition (terminal gaps count); same as 04, 07a and 07c
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
-# Minimum overlap (bp) for a pair to be written; without it, sequences that
-# share a few bases score 100% under IDDEF=2. Same values as 04, 07a and 07c.
+# Minimum overlap (bp) for a pair to be written. Same values as 04, 07a and 07c.
 declare -A MIN_OVERLAP
 MIN_OVERLAP["full_ITS"]=250
 MIN_OVERLAP["ITS1"]=50

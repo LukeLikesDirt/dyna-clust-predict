@@ -27,12 +27,11 @@ readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
 # Similarity at which two species are merged into a complex.
 readonly THRESHOLD=1.0
-# vsearch identity definition. 2 = terminal gaps excluded, so a sequence
-# contained in another scores 100%. Same as 06, 07a and 07c.
-readonly IDDEF=2
-# Minimum overlap (bp) for a pair to count; without it, sequences that share a
-# few bases score 100% under IDDEF=2. Set to the minimum sequence length (02:
-# 250 bp; 03: 50 bp). Same values as 06, 07a and 07c.
+# vsearch identity definition. 1 = terminal gaps count, so only identical
+# sequences reach THRESHOLD=1.0. Same as 06, 07a and 07c.
+readonly IDDEF=1
+# Minimum overlap (bp) for a pair to count. Set to the minimum sequence length
+# (02: 250 bp; 03: 50 bp). Same values as 06, 07a and 07c.
 declare -A MIN_OVERLAP
 MIN_OVERLAP["full_ITS"]=250
 MIN_OVERLAP["ITS1"]=50
