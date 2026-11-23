@@ -28,14 +28,9 @@ readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 # Similarity at which two species are merged into a complex.
 readonly THRESHOLD=1.0
 # vsearch identity definition. 1 = terminal gaps count, so only identical
-# sequences reach THRESHOLD=1.0. Same as 06, 07a and 07c.
+# sequences reach THRESHOLD=1.0. The input is dereplicated, so no complexes are
+# found; this step still drops incomplete sequences. Same as 06, 07a and 07c.
 readonly IDDEF=1
-# Minimum overlap (bp) for a pair to count. Set to the minimum sequence length
-# (02: 250 bp; 03: 50 bp). Same values as 06, 07a and 07c.
-declare -A MIN_OVERLAP
-MIN_OVERLAP["full_ITS"]=250
-MIN_OVERLAP["ITS1"]=50
-MIN_OVERLAP["ITS2"]=50
 # A sequence matching this many species or more is left out of complex
 # detection (likely mislabelled or contaminated).
 readonly MAX_HUB_SPECIES=3
@@ -123,7 +118,6 @@ for region in "${REGION_LABELS[@]}"; do
         --manifest_out            "${REGION_MANIFEST[$region]}" \
         --threshold              "$THRESHOLD" \
         --iddef                  "$IDDEF" \
-        --min_overlap            "${MIN_OVERLAP[$region]}" \
         --max_hub_species        "$MAX_HUB_SPECIES" \
         --min_species_per_parent "$MIN_SPECIES_PER_PARENT" \
         --require_complete       "$REQUIRE_COMPLETE" \

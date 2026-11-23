@@ -1,12 +1,8 @@
 #!/usr/bin/env Rscript
 # test_iddef.R — Regression test for the identity definition (--iddef, default
-# 2; --iddef 1 on request) and --redo yes in R/predict.R and R/compute_sim.R.
-# The minimum overlap that goes with --iddef 2 (--min_overlap, in bp) is tested
-# in tests/test_min_overlap.R.
+# 1, no coverage filter) and --redo yes in R/predict.R and R/compute_sim.R.
 # Replaces test_min_cov.R: the --min_cov coverage gate was removed on
-# 2026-11-10, when the pipeline moved from --iddef 2 + gate to --iddef 1, and
-# the pipeline went back to --iddef 2 on 2026-11-18 with a bp overlap in place
-# of a fractional gate. Both definitions stay selectable, so both are tested.
+# 2026-11-10, when the pipeline moved from --iddef 2 + gate to --iddef 1.
 #
 # The fixture is the case the gate existed for. Every sequence of species A
 # ends with the 30 bases that every sequence of species B starts with. --iddef 2
@@ -120,33 +116,28 @@ cross1 <- all_pairs(fx_ab$fasta, 1)[substr(q, 1, 1) != substr(t, 1, 1)]
 check("fixture: under --iddef 1 the same 16 pairs score under 20%",
       nrow(cross1) == 16L && all(cross1$id < 20))
 
-# ── --iddef 1: global prediction ──────────────────────────────────────────────
+# ── Default (--iddef 1): global prediction ────────────────────────────────────
 
-d_def <- new_dir("iddef1")
-r_def <- run_predict(fx_ab, d_def, "--iddef", "1")
-check("--iddef 1 run succeeds", r_def$status == 0L)
-check("--iddef 1 (no coverage filter): no spurious link, F = 1", f_at(d_def) == 1)
+d_def <- new_dir("default")
+r_def <- run_predict(fx_ab, d_def)
+check("default run succeeds", r_def$status == 0L)
+check("default (--iddef 1, no coverage filter): no spurious link, F = 1", f_at(d_def) == 1)
 
 d_two_def <- new_dir("iddef2")
 r_two_def <- run_predict(fx_ab, d_two_def, "--iddef", "2")
 check("--iddef 2 run succeeds", r_two_def$status == 0L)
 check("--iddef 2: the 100% artefact merges the species, F = 0.6667", f_at(d_two_def) == 0.6667)
 
-d_dflt <- new_dir("default")
-invisible(run_predict(fx_ab, d_dflt))
-check("the default is --iddef 2 (same F = 0.6667 as an explicit --iddef 2)", f_at(d_dflt) == 0.6667)
-
 # ── Local prediction, which goes through process_dataset() and workers ────────
 
 d_local <- new_dir("local")
-r_local <- run_predict(fx_ab, d_local, "--iddef", "1", higher_rank = "genus")
+r_local <- run_predict(fx_ab, d_local, higher_rank = "genus")
 check("local run succeeds", r_local$status == 0L)
 check("local: per-dataset vsearch uses --iddef 1, F = 1",
       f_at(d_local, dataset = "Testgenus") == 1)
 
 d_par <- new_dir("parallel")
-r_par <- run_predict(fx_ab, d_par, "--iddef", "1", higher_rank = "genus",
-                     "--run_parallel", "yes", "--n_cpus", "2")
+r_par <- run_predict(fx_ab, d_par, higher_rank = "genus", "--run_parallel", "yes", "--n_cpus", "2")
 check("parallel local run succeeds", r_par$status == 0L)
 check("parallel: the workers use --iddef 1, F = 1", f_at(d_par, dataset = "Testgenus") == 1)
 
@@ -167,12 +158,12 @@ check("--min_cov is no longer an option (the run is refused)", r_gone$status != 
 
 d_cache <- new_dir("cache")
 invisible(run_predict(fx_ab, d_cache, "--iddef", "2"))
-r_stale <- run_predict(fx_ab, d_cache, "--iddef", "1")
+r_stale <- run_predict(fx_ab, d_cache)
 check("no --redo: cached F is reused, whatever --iddef made it (existing behaviour)",
       f_at(d_cache) == 0.6667)
 check("no --redo: log warns that cached F-measures are reused",
       any(grepl("without --redo yes, F-measures cached", r_stale$log, fixed = TRUE)))
-invisible(run_predict(fx_ab, d_cache, "--iddef", "1", "--redo", "yes"))
+invisible(run_predict(fx_ab, d_cache, "--redo", "yes"))
 check("--redo yes: F recomputed under --iddef 1, F = 1", f_at(d_cache) == 1)
 
 # Two global calls with mostly different sequences but the same --out and
@@ -189,11 +180,11 @@ d_redo <- new_dir("reuse_redo")
 invisible(file.copy(file.path(d_def, "t.sim"), d_nore))
 invisible(file.copy(file.path(d_def, "t.sim"), d_redo))
 
-invisible(run_predict(fx_next, d_nore, "--iddef", "1"))
+invisible(run_predict(fx_next, d_nore))
 check("no --redo: a leftover .sim is reused, F = 0.4667 (existing behaviour)",
       f_at(d_nore) == 0.4667)
 
-r_redo <- run_predict(fx_next, d_redo, "--iddef", "1", "--redo", "yes")
+r_redo <- run_predict(fx_next, d_redo, "--redo", "yes")
 check("--redo yes: leftover .sim is not loaded",
       !any(grepl("Loading similarity matrix", r_redo$log)))
 check("--redo yes: similarity recomputed for these sequences, F = 1", f_at(d_redo) == 1)
@@ -206,7 +197,7 @@ run_sim <- function(out, ...) {
           stdout = FALSE, stderr = FALSE)
 }
 d_sim <- new_dir("sim")
-check("compute_sim.R --iddef 1 runs", run_sim(d_sim, "--iddef", "1") == 0L)
+check("compute_sim.R runs (default --iddef 1)", run_sim(d_sim) == 0L)
 sim <- fread(file.path(d_sim, "ab.sim"), header = FALSE, col.names = c("i", "j", "score"))
 ab  <- sim[substr(i, 1, 1) != substr(j, 1, 1)]
 check("compute_sim.R --iddef 1: every A-B score is under 0.2", nrow(ab) == 32L && all(ab$score < 0.2))
@@ -220,12 +211,11 @@ check("compute_sim.R --iddef 2: the A-B artefact scores 1.0",
 check("compute_sim.R --min_cov is no longer an option", run_sim(new_dir("sim3"), "--min_cov", "80") != 0L)
 
 d_explicit <- new_dir("explicit")
-r_explicit <- run_predict(fx_ab, d_explicit, "--iddef", "1", "--sim", file.path(d_sim, "ab.sim"),
-                          "--redo", "yes")
+r_explicit <- run_predict(fx_ab, d_explicit, "--sim", file.path(d_sim, "ab.sim"), "--redo", "yes")
 check("--redo yes: an explicit --sim is still loaded",
       any(grepl("Loading similarity matrix", r_explicit$log)))
 check("a loaded .sim: log notes that --iddef does not apply to it",
-      any(grepl("--iddef and --min_overlap do not apply to a loaded matrix", r_explicit$log, fixed = TRUE)))
+      any(grepl("--iddef does not apply to a loaded matrix", r_explicit$log, fixed = TRUE)))
 check(".sim from compute_sim.R gives the same result, F = 1", f_at(d_explicit) == 1)
 
 # ── Validation ────────────────────────────────────────────────────────────────

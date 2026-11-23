@@ -25,11 +25,6 @@ readonly MIN_SIM=0        # lowest similarity written to the .sim file
 readonly IDDEF=1          # vsearch identity definition (terminal gaps count); same as 04, 07a and 07c
 readonly N_CPUS="${SLURM_CPUS_PER_TASK:-$(nproc)}"
 
-# Minimum overlap (bp) for a pair to be written. Same values as 04, 07a and 07c.
-declare -A MIN_OVERLAP
-MIN_OVERLAP["full_ITS"]=250
-MIN_OVERLAP["ITS1"]=50
-MIN_OVERLAP["ITS2"]=50
 
 TARGET_RANKS=("species" "genus" "family" "order" "class" "phylum")
 REGIONS=("full_ITS" "ITS1" "ITS2")
@@ -84,7 +79,6 @@ echo "$(date)"
 echo "Threads : $N_CPUS"
 echo "min_sim : $MIN_SIM"
 echo "iddef   : $IDDEF"
-echo "min_overlap (bp): full_ITS=${MIN_OVERLAP[full_ITS]} ITS1=${MIN_OVERLAP[ITS1]} ITS2=${MIN_OVERLAP[ITS2]}"
 echo ""
 
 for region in "${REGIONS[@]}"; do
@@ -131,7 +125,6 @@ for region in "${REGIONS[@]}"; do
             --out    "./data/${region}" \
             --min_sim "$MIN_SIM" \
             --iddef   "$IDDEF" \
-            --min_overlap "${MIN_OVERLAP[$region]}" \
             --n_cpus  "$N_CPUS"
 
         if [[ $? -ne 0 ]]; then

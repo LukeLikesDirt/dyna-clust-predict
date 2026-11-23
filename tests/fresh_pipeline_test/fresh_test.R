@@ -138,7 +138,7 @@ class_in <- p07$arrays$REGION_CLASS[[region]]
 abbr_to_rank <- setNames(names(p07$arrays$RANK_ABBR), unlist(p07$arrays$RANK_ABBR))
 cat("Region ", region, "\n  FASTA ", fasta_in, "\n  class ", class_in, "\n", sep = "")
 cat("  05: ", paste(sprintf("%s=%s", names(p05$consts), unlist(p05$consts)), collapse = " "), "\n", sep = "")
-cat("  07: IDDEF=", p07$consts$IDDEF, " MIN_OVERLAP=", p07$arrays$MIN_OVERLAP[[region]],
+cat("  07: IDDEF=", p07$consts$IDDEF,
     " MIN_MULTISEQ_GROUPS=", p07$consts$MIN_MULTISEQ_GROUPS,
     " CUTOFF_ROUND_TO=", p07$consts$CUTOFF_ROUND_TO, "\n", sep = "")
 
@@ -287,7 +287,7 @@ fast_dataset <- function(ids, sp_of, tag, target = "species") {
   d <- file.path(work, "fast"); dir.create(d, showWarnings = FALSE)
   start_t <- as.numeric(p07$arrays$START_THRESH[[target]]); end_t <- as.numeric(p07$consts$END_THRESH)
   step_t  <- as.numeric(p07$consts$STEP); round_to <- as.numeric(p07$consts$CUTOFF_ROUND_TO)
-  iddef   <- as.integer(p07$consts$IDDEF); mo <- as.integer(p07$arrays$MIN_OVERLAP[[region]])
+  iddef   <- as.integer(p07$consts$IDDEF)
   writeLines(ids, f_ids <- file.path(d, paste0(tag, ".ids")))
   fa <- file.path(d, paste0(tag, ".fasta")); sim <- file.path(d, paste0(tag, ".sim"))
   system2("seqkit", c("grep", "-f", f_ids, fasta_in), stdout = fa, stderr = FALSE)
@@ -296,7 +296,7 @@ fast_dataset <- function(ids, sp_of, tag, target = "species") {
   # Start 0.001 lower: any pair printing at or above the first threshold is kept,
   # and the F trace then equals predict.R's at every threshold (checked on Insecta).
   id_floor <- format(round(start_t - 0.001, 4))
-  accept <- if (mo > 0) sprintf("--id %s --mincols %d", id_floor, mo) else sprintf("--id %s", id_floor)
+  accept <- sprintf("--id %s", id_floor)
   cmd <- sprintf("vsearch --allpairs_global '%s' %s --userout '%s' --userfields query+target+id --iddef %d --threads %d",
                  fa, accept, sim, iddef, opt$threads)
   cat("  $", cmd, "\n"); t0 <- Sys.time()

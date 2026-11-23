@@ -18,23 +18,20 @@ check <- function(desc, ok) {
   }
 }
 
-# ── The shell scripts carry the same per-region values ────────────────────────
-# 04, 06, 07a and 07c each declare their own MIN_OVERLAP, so a change to one
-# must be made in all four. IDDEF must be 1 in each, and each must pass the
-# overlap to its R script.
+# ── Every alignment step uses --iddef 1, with no overlap filter ──────────────
+# 04, 06, 07a and 07c each set their own IDDEF, so a change to one must be made
+# in all four. Under --iddef 1 terminal gaps count, so no overlap filter is
+# needed and none is passed.
 
 for (sc in c("scripts/04_remove_complexes.sh", "scripts/06_compute_sim.sh",
              "scripts/07a_predict_cutoffs.sh", "scripts/07c_predict_cutoffs_parallel.sh")) {
   lines <- readLines(sc)
   name  <- basename(sc)
-  check(sprintf("%s: IDDEF=1", name), any(lines == "readonly IDDEF=1" | grepl("^readonly IDDEF=1( |$)", lines)))
-  check(sprintf("%s: MIN_OVERLAP full_ITS=250, ITS1=50, ITS2=50", name),
-        any(lines == 'MIN_OVERLAP["full_ITS"]=250') && any(lines == 'MIN_OVERLAP["ITS1"]=50') &&
-        any(lines == 'MIN_OVERLAP["ITS2"]=50'))
-  n_flag <- sum(grepl('--min_overlap +"\\$\\{MIN_OVERLAP\\[\\$region\\]\\}"', lines))
-  check(sprintf("%s: passes --min_overlap per region (%d call site%s)", name, n_flag,
-                if (n_flag == 1L) "" else "s"),
+  check(sprintf("%s: IDDEF=1", name), any(grepl("^readonly IDDEF=1( |$)", lines)))
+  n_flag <- sum(grepl('--iddef +"\\$IDDEF"', lines))
+  check(sprintf("%s: passes --iddef at every call site (%d)", name, n_flag),
         n_flag == (if (grepl("07", name)) 2L else 1L))
+  check(sprintf("%s: no overlap filter", name), !any(grepl("min_overlap|MIN_OVERLAP|mincols", lines)))
 }
 for (sc in c("scripts/07a_predict_cutoffs.sh", "scripts/07c_predict_cutoffs_parallel.sh")) {
   check(sprintf("%s: does not pass --max_seq_no (predict.R's default applies)", basename(sc)),

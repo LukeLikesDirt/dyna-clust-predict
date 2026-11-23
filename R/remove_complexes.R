@@ -26,21 +26,15 @@
 # one genus; cross-genus 100%-identity hits are themselves usually
 # contamination, not biology, and are out of scope here).
 #
-# Identity definition (2026-11-18): --iddef defaults to 2, the definition used
-# for cut-off prediction (terminal gaps excluded), with --min_overlap in bp in
-# place of a fractional coverage gate. The input is dereplicated (every
-# sequence is a distinct string), so at --threshold 1.0 only --iddef 2 can find
-# a complex: tested on ITS2 in Aspergillus, Penicillium, Fusarium,
+# Identity definition (2026-11-10): --iddef defaults to 1, the definition used
+# for cut-off prediction (terminal gaps count). The input is dereplicated (every
+# sequence is a distinct string), so at --threshold 1.0 an --iddef 1 run finds
+# no complex: tested on ITS2 in Aspergillus, Penicillium, Fusarium,
 # Cladosporium, Trichoderma, Alternaria, Russula and Inocybe, 0 cross-species
 # pairs reach 100% under --iddef 1 against 108-2,806 per genus under --iddef 2,
 # every one of them between sequences of different lengths (one contained in
 # the other). Identical sequences are already resolved by dereplicate_lca.R,
-# which takes their LCA. Under --iddef 2 a pair that shares only a few bases
-# also scores 100%, which is not evidence that two species are
-# indistinguishable: --min_overlap drops every pair whose alignment, terminal
-# gaps excluded, is shorter than that many bp (vsearch --mincols). The
-# pipeline sets it per region: 50 bp for ITS1 and ITS2, 250 bp for full ITS.
-# Pass --iddef 1 to find no complexes (the 2026-11-10 behaviour).
+# which takes their LCA. Pass --iddef 2 to detect complexes as before.
 #
 # Deliberately NOT ported from dnabarcoder, per code review:
 #   - MergeComplexes() reads a module-level `classes` global instead of taking
@@ -138,18 +132,15 @@ option_list <- list(
                            "excess is randomly downsampled (mirrors predict.R's own",
                            "cap) to bound per-group vsearch runtime/memory on the",
                            "largest genera. [default: %default]")),
-  make_option("--iddef", type = "integer", default = 2L, metavar = "0-4",
-              help = paste("vsearch --iddef pairwise identity definition. Default 2",
-                           "(terminal gaps excluded), as in R/predict.R: species identical",
-                           "over their overlap (one sequence contained in the other) form",
-                           "a complex. NB: the input is dereplicated, so under --iddef 1 a",
-                           "pair can reach --threshold 1.0 only if identical and this step",
-                           "finds no complexes. [default: %default]")),
-  make_option("--min_overlap", type = "integer", default = 0L, metavar = "BP",
-              help = paste("Ignore pairs whose alignment, terminal gaps excluded, is shorter",
-                           "than this many bp (vsearch --mincols). Under --iddef 2 a pair",
-                           "sharing only a few bases scores 100%, which is not evidence of",
-                           "a complex. Default 0 (off). [default: %default]")),
+  make_option("--iddef", type = "integer", default = 1L, metavar = "0-4",
+              help = paste("vsearch --iddef pairwise identity definition. Default 1",
+                           "(terminal gaps count), as in R/predict.R. NB: the input is",
+                           "dereplicated, so no two sequences are identical, and under",
+                           "--iddef 1 a pair can reach --threshold 1.0 only if identical:",
+                           "at 1.0 this step then finds no complexes. --iddef 2 ignores",
+                           "terminal gaps, so it finds species identical over their",
+                           "overlap (one sequence contained in the other).",
+                           "[default: %default]")),
   make_option("--id_col", type = "character", default = "id", metavar = "STR",
               help = "ID column name in the classification file [default: %default]"),
   make_option("--n_cpus", type = "integer",
@@ -178,12 +169,10 @@ missing  <- required[sapply(required, function(x) is.null(opt[[x]]))]
 if (length(missing) > 0) stop("Missing required options: ", paste0("--", missing, collapse = ", "))
 if (!file.exists(opt$fasta_in))          stop("File not found: ", opt$fasta_in)
 if (!file.exists(opt$classification_in)) stop("File not found: ", opt$classification_in)
-if (is.na(opt$iddef) || !opt$iddef %in% 0:4) stop("--iddef must be 0, 1, 2, 3 or 4.")
-if (is.na(opt$min_overlap) || opt$min_overlap < 0) {
-  stop("--min_overlap must be a non-negative number of bp (0 disables it).")
-}
 
-fasta_in            <- opt$fasta_in
+if (is.na(opt$iddef) || !opt$iddef %in% 0:4) stop("--iddef must be 0, 1, 2, 3 or 4.")
+
+fasta_in             <- opt$fasta_in
 rank                 <- opt$rank
 parent_rank          <- opt$parent_rank
 threshold            <- opt$threshold
@@ -192,7 +181,6 @@ min_species_per_parent <- opt$min_species_per_parent
 require_complete     <- identical(tolower(opt$require_complete), "yes")
 max_seq_no           <- opt$max_seq_no
 iddef                <- opt$iddef
-min_overlap          <- opt$min_overlap
 id_col               <- opt$id_col
 n_cpus               <- opt$n_cpus
 run_parallel         <- identical(tolower(opt$run_parallel), "yes")
@@ -289,13 +277,9 @@ detect_complexes_one <- function(parent_name, ids, tmp_dir) {
   sim_file  <- file.path(tmp_dir, paste0(safe_name, ".sim.txt"))
   write_subset_fasta(fasta_in, ids, fa_file)
 
-  # --acceptall switches off every accept/reject criterion, --mincols included,
-  # so a minimum overlap accepts any identity (--id 0) instead. An empty output
-  # then means no pair overlapped by min_overlap bp, i.e. no complex.
-  accept <- if (min_overlap > 0) sprintf("--id 0 --mincols %d", as.integer(min_overlap)) else "--acceptall"
   vsearch_cmd <- sprintf(
-    "vsearch --allpairs_global '%s' %s --userout '%s' --userfields query+target+id --iddef %d --threads 1",
-    fa_file, accept, sim_file, iddef
+    "vsearch --allpairs_global '%s' --acceptall --userout '%s' --userfields query+target+id --iddef %d --threads 1",
+    fa_file, sim_file, iddef
   )
   ok <- system(vsearch_cmd, ignore.stdout = TRUE, ignore.stderr = TRUE) == 0
   unlink(fa_file)
@@ -375,8 +359,8 @@ detect_complexes_one <- function(parent_name, ids, tmp_dir) {
 
 # ── Run across all parent groups ──────────────────────────────────────────────
 
-cat(sprintf("[remove_complexes] Detecting complexes within %d %s groups (threshold=%.4f, iddef=%d, min_overlap=%d bp, max_hub_species=%d)...\n",
-            length(parent_groups), parent_rank, threshold, iddef, as.integer(min_overlap), max_hub_species))
+cat(sprintf("[remove_complexes] Detecting complexes within %d %s groups (threshold=%.4f, iddef=%d, max_hub_species=%d)...\n",
+            length(parent_groups), parent_rank, threshold, iddef, max_hub_species))
 
 if (run_parallel) {
   if (.Platform$OS.type == "unix") plan(multicore, workers = n_cpus) else plan(multisession, workers = n_cpus)

@@ -151,7 +151,7 @@ sbatch scripts/08_consolidate_cutoffs.sh           # Fill gaps, repair monotonic
 # Key parameters
 
 Production values, set at the top of each script. The R scripts take the same
-settings as flags (e.g. `MIN_OVERLAP` → `--min_overlap`); run
+settings as flags (e.g. `MAX_HUB_SPECIES` → `--max_hub_species`); run
 `Rscript R/<script>.R --help` for every option.
 
 ## 01 Reformat
@@ -178,9 +178,8 @@ most frequent parent (`data/lineage_canonicalisation.txt`).
 
 | Parameter | Value | What it does |
 |---|---|---|
-| `THRESHOLD` | 1.0 | Similarity at which two species form a complex |
+| `THRESHOLD` | 1.0 | Similarity at which two species form a complex (none under `IDDEF=1`: the input is dereplicated) |
 | `IDDEF` | 1 | vsearch identity definition: terminal gaps count |
-| `MIN_OVERLAP` | 250 / 50 / 50 | Minimum overlap (bp) for a pair to count: full ITS / ITS1 / ITS2 |
 | `MAX_HUB_SPECIES` | 3 | Ignore sequences that match this many species or more |
 | `MIN_SPECIES_PER_PARENT` | 2 | Skip genera with fewer species |
 | `REQUIRE_COMPLETE` | yes | Keep only complete sequences |
@@ -210,7 +209,7 @@ singleton cap limit this.
 | Parameter | Value | What it does |
 |---|---|---|
 | `MIN_SIM` | 0 | Lowest similarity written to the `.sim` file |
-| `IDDEF`, `MIN_OVERLAP` | as 04 | |
+| `IDDEF` | 1 | as 04 |
 
 ## 07 Predict cutoffs
 
@@ -221,7 +220,7 @@ singleton cap limit this.
 | `STEP` | 0.001 | Sweep step |
 | `MIN_MULTISEQ_GROUPS` | 10 | Minimum taxa with 2+ sequences to report a cutoff |
 | `CUTOFF_ROUND_TO` | 0.005 | Round the reported cutoff to this step |
-| `IDDEF`, `MIN_OVERLAP` | as 04 | |
+| `IDDEF` | 1 | as 04 |
 | `REDO` | yes | Recompute instead of reusing cached results |
 
 Writes to `data/<region>/`: `eukaryome.predicted` (F-measure at every
@@ -239,9 +238,11 @@ from and `clamped` marks raised values.
 
 ## Similarity definition
 
-Steps 04, 06 and 07 all use `IDDEF=1` and the same `MIN_OVERLAP`. Cutoffs are
-only valid when sequences are compared with the same settings. This branch
-(`iddef1`) differs from `main` only in `IDDEF`: `main` uses `IDDEF=2`.
+Steps 04, 06 and 07 all use `IDDEF=1`: terminal gaps count, so a sequence that
+covers only part of another scores below 100% and no overlap filter is needed.
+Cutoffs are only valid when sequences are compared with the same setting. This
+branch (`iddef1`) is a comparison run: `main` uses `IDDEF=2` with a minimum
+overlap.
 
 ## Tests
 

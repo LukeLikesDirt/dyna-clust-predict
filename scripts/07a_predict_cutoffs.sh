@@ -36,11 +36,6 @@ readonly CUTOFF_ROUND_TO=0.005
 # vsearch identity definition. 1 = terminal gaps count, so a sequence that
 # covers only part of another scores below 100%. Same as 04 and 06.
 readonly IDDEF=1
-# Minimum overlap (bp) for a pair to count. Same values as 04 and 06.
-declare -A MIN_OVERLAP
-MIN_OVERLAP["full_ITS"]=250
-MIN_OVERLAP["ITS1"]=50
-MIN_OVERLAP["ITS2"]=50
 # Recompute F-measures instead of reusing those cached in <prefix>.predicted;
 # the cache is not refreshed when inputs or settings change.
 readonly REDO="yes"
@@ -241,7 +236,6 @@ for region in "${REGIONS[@]}"; do
                 --step           "$STEP" \
                 --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
                 --iddef          "$IDDEF" \
-                --min_overlap    "${MIN_OVERLAP[$region]}" \
                 --redo           "$REDO" \
                 --cutoff_round_to "$CUTOFF_ROUND_TO" \
                 --prefix         "$PREFIX" \
@@ -316,7 +310,6 @@ for region in "${REGIONS[@]}"; do
             --step           "$STEP" \
             --min_multiseq_groups "$MIN_MULTISEQ_GROUPS" \
             --iddef          "$IDDEF" \
-            --min_overlap    "${MIN_OVERLAP[$region]}" \
             --redo           "$REDO" \
             --cutoff_round_to "$CUTOFF_ROUND_TO" \
             --prefix         "$PREFIX" \
